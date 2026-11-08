@@ -1,0 +1,43 @@
+# Credentials and personal data
+.env
+.env.*
+!.env.example
+secrets/
+private/
+team.json
+team.*.json
+*harness*report*.json
+*harness*report*.jsonl
+*.pem
+*.key
+*.sig
+id_ed25519*
+agent-registry-key*
+
+# Local datasets, traces, models and runtime state
+data/
+artifacts/
+logs/
+runtime/
+*.log
+*.pkl
+*.joblib
+*.pt
+*.pth
+
+# Python and editors
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.idea/
+.vscode/
+.DS_Store
+
+answer.txt
+its_ia_result.json
+*.log

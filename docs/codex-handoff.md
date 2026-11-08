@@ -1,0 +1,29 @@
+# Контекст для VS Code / Codex
+
+Команда Its IA, Иван и Миша. Repo lonelyoutsider/openjiuwen_hackaton_2026.
+Прочитать AGENTS.md, docs/requirements.md, docs/progress.md и docs/plan.md.
+
+Цель — reward на 100 задачах под общим бюджетом output + input/10, не MAE
+отдельного предиктора. openJiuwen обязателен. В main первый узкий baseline:
+6/8 официальных примеров, 16/20, 0 API calls, реальный Workflow/Runner.
+
+Начать с python -m unittest discover -s tests -v и
+python scripts/evaluate_examples.py в окружении requirements.lock.
+Dockerfile подготовлен, но build/run и размер образа ещё не проверены.
+Не редактировать официальные примеры для улучшения результата.
+Не давать expected в решатель; evaluator удаляет его из входной копии.
+Не путать unsupported с доказанной невыполнимостью.
+
+Следующая реализация: OpenAI-compatible API-клиент по env, usage/бюджет,
+лимиты времени и повторов, coding-агент через openJiuwen, локальные инструменты,
+проверка тестов без правки tests, answer.txt рядом с task.json.
+Утвердить небольшой экспериментальный бюджет до массовых запросов.
+
+API base при разработке по памятке https://api.neuraldeep.ru/v1;
+на оценке использовать только LLM_BASE_URL и LLM_API_KEY проверяющих.
+Invite-код и ключ команды в repo не хранить. Во время разработки не выходить
+за два одновременных внешних IP командного аккаунта.
+
+Нет автоматической синхронизации контекста между чатом и IDE:
+фиксация состояния — коммиты и docs/progress.md. Для изменений отдельная ветка/PR.
+MCP-квалификация уже закрыта. Не выполнять регистрацию или heartbeat.
