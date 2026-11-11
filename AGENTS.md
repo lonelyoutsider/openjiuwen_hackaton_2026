@@ -14,6 +14,7 @@ Team Its IA — openJiuwen Challenge 2026.
 - Record experiment configuration and measured results in docs/progress.md.
 - Do not run bulk API experiments without a defined budget.
 - A Python test is not a Docker test, and a parser test is not an API integration test.
-- Runtime may access only the provided LLM proxy; no downloads or local neural models.
+- Runtime may access only the provided LLM proxy; no runtime downloads or GPU use.
+- See the Nov 10 organizer clarification on CPU models in docs/requirements.md.
 - Code and generated files must work with read-only /app and writable /tmp and tasks.
 - Use branches/PRs for subsequent work. Do not overwrite another participant's changes.

@@ -3,6 +3,7 @@ import argparse
 import asyncio
 import json
 import os
+import tempfile
 from pathlib import Path
 from harness.execution import execute
 from harness.tasks import load_tasks
@@ -23,6 +24,9 @@ async def main():
     # Supported deterministic routes have zero LLM cost. LLM planning is pending.
     tasks.sort(key=lambda t: (-t.reward, t.task_id))
     if args.engine == "openjiuwen":
+        # SDK file logging may use a relative logs/ path during import.
+        # /app is read-only in the evaluator; task paths are already absolute.
+        os.chdir(tempfile.mkdtemp(prefix="its-ia-openjiuwen-"))
         from harness.workflow import build_workflow, run_task
         flow = build_workflow()
     for task in tasks:
