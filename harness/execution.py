@@ -33,6 +33,9 @@ def execute(task, agent=None):
         after = agent.client.snapshot()
         for key in ("input_tokens", "output_tokens", "weighted_tokens", "llm_calls"):
             record[key] = after[key] - before[key]
+        record["weighted_tokens"] = round(record["weighted_tokens"], 1)
         record["usage_uncertain"] = after["usage_uncertain"]
+        if agent.diagnostics and backend == "llm":
+            record["diagnostics"] = agent.last_trace
     atomic_text(task.directory / "its_ia_result.json", json.dumps(record, ensure_ascii=False) + "\n")
     return record

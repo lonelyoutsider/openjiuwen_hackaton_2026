@@ -15,6 +15,7 @@ async def main():
     parser.add_argument("--tasks-dir", type=Path, required=True)
     parser.add_argument("--budget", type=int, default=int(os.environ.get("BUDGET", "100000")))
     parser.add_argument("--no-llm", action="store_true")
+    parser.add_argument("--diagnostics", action="store_true", help="record bounded model actions and tool observations")
     parser.add_argument("--max-calls-per-task", type=int, default=6)
     parser.add_argument("--max-output-tokens", type=int, default=1024)
     parser.add_argument("--time-limit", type=int, default=3300)
@@ -52,7 +53,7 @@ async def main():
         client = Client(os.environ.get("LLM_BASE_URL", "https://api.neuraldeep.ru/v1"),
                         os.environ["LLM_API_KEY"], args.budget, model=args.model, deadline=deadline)
         agent = Agent(client, max_calls=args.max_calls_per_task,
-                      max_tokens=args.max_output_tokens, deadline=deadline)
+                      max_tokens=args.max_output_tokens, deadline=deadline, diagnostics=args.diagnostics)
         if args.engine == "openjiuwen":
             flow = build_workflow(agent)
         # Initial cost estimates are explicit heuristics, not trained predictions.

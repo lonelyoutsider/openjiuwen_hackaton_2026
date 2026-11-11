@@ -78,6 +78,26 @@ class LedgerTests(unittest.TestCase):
 
 
 class AgentTests(unittest.TestCase):
+    def test_diagnostics_include_action_and_action_error_without_system_prompt(self):
+        with tempfile.TemporaryDirectory() as temp:
+            task = task_fixture(Path(temp))
+            client = FakeClient([{'action': 'read', 'path': 'missing.csv'},
+                                 {'action': 'abstain', 'reason': 'required file is absent'}])
+            agent = Agent(client, max_calls=2, diagnostics=True)
+            self.assertEqual(agent.solve(task).status, 'insufficient_data')
+            self.assertEqual(len(agent.last_trace), 2)
+            self.assertIn('FileNotFoundError', agent.last_trace[0]['observation'])
+            self.assertNotIn('You solve a single local task', json.dumps(agent.last_trace))
+            self.assertIn('FINAL available call', client.prompts[-1])
+            self.assertEqual(len(client.prompts), 2)
+
+    def test_diagnostics_disabled_by_default(self):
+        with tempfile.TemporaryDirectory() as temp:
+            task = task_fixture(Path(temp))
+            agent = Agent(FakeClient([{'action': 'abstain', 'reason': 'test'}]))
+            agent.solve(task)
+            self.assertEqual(agent.last_trace, [])
+
     def test_malformed_action_consumes_only_the_configured_attempts(self):
         with tempfile.TemporaryDirectory() as temp:
             task = task_fixture(Path(temp))
