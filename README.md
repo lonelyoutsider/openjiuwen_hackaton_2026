@@ -133,6 +133,25 @@ usage, ответы и итоговые coding-исходники, без клю
 
 Офлайн без API: `python scripts/evaluate_examples.py --suite validation --quiet`.
 
+Первый реальный результат validation-v1: **7/8 выполнимых, 18/21 reward,
+2169.9 токена, 24 вызова**. Два недоопределённых случая без ответов, но один
+из них остановлен лимитом, а не явным отказом модели. coding прошёл дополнительные
+проверки. Причина незавершения data_tie пока неизвестна.
+
+Целевой повтор с диагностикой, без повторного прогона всего набора:
+
+```powershell
+git pull --ff-only
+docker build --progress=plain -t its-ia:agent .
+py scripts/run_live_examples.py --suite validation --only data_tie,data_missing_costs --budget 3000 --diagnostics
+```
+
+Отчёт: `artifacts/validation_subset_report.json`. Лимит вызовов остаётся 4.
+Диагностика содержит ограниченные ответы модели и результаты инструментов;
+полные промпты и ключи не сохраняются. По умолчанию диагностика выключена,
+включается только флагом. Не коммитить непроверенные диагностические отчёты.
+
+
 ## Docker
 
 ```bash

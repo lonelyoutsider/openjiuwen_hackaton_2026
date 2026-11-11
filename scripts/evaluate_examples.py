@@ -51,6 +51,8 @@ def main():
     parser.add_argument('--budget', type=int, default=3000)
     parser.add_argument('--suite', choices=['public', 'validation'], default='public')
     parser.add_argument('--quiet', action='store_true', help='capture SDK logs; print case outcomes and summary')
+    parser.add_argument('--only', help='comma-separated case IDs for a targeted experiment')
+    parser.add_argument('--diagnostics', action='store_true')
     parser.add_argument('--report', type=Path, help='save a sanitized JSON report after the agent exits')
     args = parser.parse_args()
     if args.budget <= 0:
@@ -64,11 +66,21 @@ def main():
         else:
             from scripts.validation_set import build_validation_set
             labels = build_validation_set(root)
+        if args.only:
+            selected = set(args.only.split(','))
+            unknown = selected - set(labels)
+            if unknown:
+                parser.error('unknown task IDs: ' + ','.join(sorted(unknown)))
+            for name in set(labels) - selected:
+                shutil.rmtree(root / name)
+            labels = {name: label for name, label in labels.items() if name in selected}
         for path in root.glob('*/task.json'):
             data = json.loads(path.read_text(encoding='utf-8'))
             data.pop('expected', None)
             path.write_text(json.dumps(data), encoding='utf-8')
         options = ['--budget', str(args.budget), '--time-limit', '300', '--max-calls-per-task', '4'] if args.llm else ['--no-llm']
+        if args.diagnostics:
+            options += ['--diagnostics']
         run = subprocess.run([sys.executable, str(REPO / 'run_agent.py'), '--tasks-dir', str(root),
                               '--engine', args.engine, *options], cwd=REPO, timeout=360,
                              capture_output=args.quiet, text=True)
@@ -90,6 +102,8 @@ def main():
                    'status': record.get('status', 'not_recorded'), 'reason': record.get('reason', ''),
                    'llm_calls': record.get('llm_calls', 0), 'weighted_tokens': record.get('weighted_tokens', 0),
                    'usage_uncertain': record.get('usage_uncertain', False)}
+            if args.diagnostics:
+                row['diagnostics'] = record.get('diagnostics', [])
             if label['task_type'] == 'coding':
                 row['candidate_sources'] = {
                     str(p.relative_to(folder / 'workspace')): p.read_text(encoding='utf-8')

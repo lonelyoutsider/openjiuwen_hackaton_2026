@@ -2,12 +2,30 @@ from pathlib import Path
 import json
 import tempfile
 import unittest
+import subprocess
+import sys
 
 from scripts.evaluate_examples import check_answer
 from scripts.validation_set import build_validation_set
 
 
 class ValidationSuiteTests(unittest.TestCase):
+    def test_targeted_evaluation_excludes_other_cases_without_api_calls(self):
+        with tempfile.TemporaryDirectory() as temp:
+            report = Path(temp) / 'report.json'
+            repo = Path(__file__).resolve().parents[1]
+            run = subprocess.run([sys.executable, str(repo / 'scripts/evaluate_examples.py'),
+                '--suite', 'validation', '--only', 'data_tie,data_missing_costs',
+                '--engine', 'stdlib', '--quiet', '--diagnostics', '--report', str(report)],
+                capture_output=True, text=True, timeout=30)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            result = json.loads(report.read_text())
+            self.assertEqual(result['summary']['tasks'], 2)
+            self.assertEqual(result['summary']['solvable_tasks'], 1)
+            self.assertEqual(result['summary']['available_reward'], 3)
+            self.assertEqual(result['summary']['llm_calls'], 0)
+            self.assertEqual({r['task_id'] for r in result['tasks']}, {'data_tie', 'data_missing_costs'})
+
     def test_composition_and_private_checks_are_not_in_task_inputs(self):
         with tempfile.TemporaryDirectory() as temp:
             labels = build_validation_set(Path(temp))

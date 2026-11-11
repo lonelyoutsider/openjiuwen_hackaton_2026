@@ -12,6 +12,8 @@ def main():
     parser.add_argument("--image", default="its-ia:agent")
     parser.add_argument("--budget", type=int, default=3000)
     parser.add_argument("--suite", choices=["public", "validation"], default="public")
+    parser.add_argument("--only", help="comma-separated case IDs")
+    parser.add_argument("--diagnostics", action="store_true")
     args = parser.parse_args()
     if args.budget <= 0:
         parser.error("budget must be positive")
@@ -23,15 +25,20 @@ def main():
     env.setdefault("LLM_BASE_URL", "https://api.neuraldeep.ru/v1")
     reports = repo / "artifacts"
     reports.mkdir(exist_ok=True)
+    report_name = args.suite + ("_subset" if args.only else "") + "_report.json"
     command = ["docker", "run", "--rm", "--read-only", "--tmpfs", "/tmp:rw,size=2g",
                "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "512",
                "-e", "LLM_API_KEY", "-e", "LLM_BASE_URL", "-e", "LLM_MODEL", "--mount", f"type=bind,source={reports},target=/results",
                "--mount",
                f"type=bind,source={repo},target=/repo,readonly", "--entrypoint", "python", args.image,
                "/repo/scripts/evaluate_examples.py", "--llm", "--budget", str(args.budget),
-               "--suite", args.suite, "--quiet", "--report", f"/results/{args.suite}_report.json"]
+               "--suite", args.suite, "--quiet", "--report", f"/results/{report_name}"]
+    if args.only:
+        command += ["--only", args.only]
+    if args.diagnostics:
+        command += ["--diagnostics"]
     print(f"Live experiment: suite={args.suite}, budget={args.budget}, up to 4 calls per unresolved task.", flush=True)
-    print(f"Report: {reports / (args.suite + '_report.json')}", flush=True)
+    print(f"Report: {reports / report_name}", flush=True)
     # Credentials travel via the child environment, never in command arguments.
     return subprocess.run(command, env=env, cwd=repo).returncode
 
