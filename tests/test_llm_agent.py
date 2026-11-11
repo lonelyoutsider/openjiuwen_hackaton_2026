@@ -78,6 +78,13 @@ class LedgerTests(unittest.TestCase):
 
 
 class AgentTests(unittest.TestCase):
+    def test_malformed_action_consumes_only_the_configured_attempts(self):
+        with tempfile.TemporaryDirectory() as temp:
+            task = task_fixture(Path(temp))
+            client = FakeClient([])
+            client.complete = lambda messages, max_tokens: "```"
+            self.assertEqual(Agent(client, max_calls=1).solve(task).status, "unsupported")
+
     def test_coding_fix_verified_and_published_without_label(self):
         with tempfile.TemporaryDirectory() as temp:
             task = task_fixture(Path(temp))

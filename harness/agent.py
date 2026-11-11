@@ -56,7 +56,10 @@ class Agent:
                     try:
                         text = content.strip()
                         if text.startswith("```") and text.endswith("```"):
-                            text = text.split("\n", 1)[1].rsplit("```", 1)[0]
+                            _, newline, block = text.partition("\n")
+                            if not newline:
+                                raise ValueError("incomplete code fence")
+                            text = block.rsplit("```", 1)[0]
                         action = json.loads(text)
                         kind = action["action"]
                         if kind == "abstain":
