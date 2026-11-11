@@ -77,6 +77,7 @@ if payload['mode']=='tests':
     print('ITS_IA_TEST_RESULT='+json.dumps({'count':count,'ok':result.wasSuccessful()}))
     sys.exit(0 if count>0 and result.wasSuccessful() else 1)
 else:
+    sys.path.insert(0,str(root))
     exec(compile(payload['code'],'<task-code>','exec'),{'__name__':'__main__'})
 '''
 
