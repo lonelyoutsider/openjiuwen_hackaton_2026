@@ -24,6 +24,28 @@
 Перед запуском оценщик удаляет expected из копии task.json. Решатель получает
 только разрешённые поля. expected читает исключительно локальный оценщик.
 
+## Windows: первый API-вызов без установки библиотек
+
+Python 3.14 годится для отдельного диагностического скрипта, но выбранный
+openJiuwen требует Python >=3.11,<3.14. Основной агент запускаем в Docker/Python 3.12.
+
+```powershell
+git clone https://github.com/lonelyoutsider/openjiuwen_hackaton_2026.git
+cd openjiuwen_hackaton_2026
+py scripts/smoke_api.py
+```
+
+Вставить ключ из кабинета в скрытый запрос. Ключ не сохраняется в файл и
+не передаётся как аргумент командной строки. Если LLM_API_KEY задан, берётся
+из окружения. Скрипт делает ровно один chat/completions запрос, max_tokens=32,
+модель qwen3.8-27b-noreason, без автоматических повторов, выводит ответ и usage.
+Это диагностика API, не конкурсный агент. Проверено с mock HTTP; реального
+запроса с ключом команды ещё не было. Python 3.14 здесь отдельно не запускался.
+
+Docker Desktop: https://docs.docker.com/desktop/setup/install/windows-install/
+Выбрать WSL 2 backend, затем открыть Docker Desktop и новый PowerShell:
+`docker version`, `docker run --rm hello-world`, `wsl -l -v`.
+
 ## Быстрый старт: Python 3.12
 
 ```bash
@@ -60,7 +82,7 @@ answer.txt не создаётся. Код задачи и неизвестны�
 ```bash
 docker build -t its-ia:baseline .
 docker run --rm --read-only --tmpfs /tmp:rw,size=2g \
-  --network none --cpus 4 --memory 16g --pids-limit 512 \
+  --network none --cpus 8 --memory 16g --pids-limit 512 \
   --cap-drop ALL --security-opt no-new-privileges \
   -e HOME=/tmp -e BUDGET=100000 \
   -v /absolute/path/to/clean-tasks:/data/tasks:rw \
@@ -97,5 +119,6 @@ P(correct) * reward / predicted_cost на независимых вариаци�
 - Записывать конфигурацию и результаты в docs/progress.md.
 - Не коммитить .env, invite-коды, ключи, персональные данные или сырые трассы.
 - Для приватной сдачи до дедлайна нужен принятый доступ promsoft и madrugado.
-  Приглашения жюри и Мише на момент подготовки не отправлены.
+  Пользователь пригласил MikhailOnyanov, принятие пока не подтверждено.
+  Приглашения жюри не подтверждены. По уточнению 10 ноября email со ссылкой не нужен.
 - Точное время дедлайна, финальный запуск и ряд противоречий ожидают уточнения.
