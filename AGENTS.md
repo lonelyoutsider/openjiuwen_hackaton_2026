@@ -2,7 +2,8 @@
 
 Team Its IA — openJiuwen Challenge 2026.
 
-- Read docs/requirements.md and docs/progress.md before implementing changes.
+- Read docs/requirements.md, docs/progress.md, docs/plan.md and docs/codex-handoff.md before implementing changes.
+- Accepted harness research and experiment order: docs/harness-research-2026-11-12.md. Read the relevant experiment protocol before changing that component.
 - Primary score is solved-task reward under a shared token budget, not predictor MAE.
 - Use real openJiuwen execution; do not fake framework markers or harness evidence.
 - Never commit API keys, invite codes, questionnaires, raw reports or unreviewed traces.
