@@ -31,6 +31,21 @@ class ActionFormatTests(unittest.TestCase):
         text = 'I will compute this.\n```json\n' + json.dumps(action) + '\n```'
         self.assertEqual(parse_action(text, recover=True), (action, 'recovered'))
 
+    def test_fence_language_label_does_not_change_json_content(self):
+        action = {'action': 'read', 'path': 'module.py'}
+        for language in ['python', 'JSON', 'text', '', 'json']:
+            text = 'The next action is:\n```' + language + '\n' + json.dumps(action) + '\n```'
+            with self.subTest(language=language):
+                self.assertEqual(parse_action(text, recover=True), (action, 'recovered'))
+
+    def test_fence_does_not_allow_non_json_code_before_or_after_action(self):
+        action = '{"action":"answer","answer":"17"}'
+        invalid = ['Explanation\n```python\nprint(1)\n' + action + '\n```',
+                   'Explanation\n```python\n' + action + '\nprint(1)\n```']
+        for text in invalid:
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                parse_action(text, recover=True)
+
     def test_ambiguous_truncated_or_extra_content_is_not_repaired(self):
         action = '{"action":"answer","answer":"17"}'
         invalid = ['No action was produced.', action + '\n}', action + action,
@@ -90,6 +105,19 @@ class RecoveryAgentTests(unittest.TestCase):
 
 
 class TelemetryTests(unittest.TestCase):
+    def test_provider_json_mode_is_opt_in_and_charged_from_the_same_usage(self):
+        for json_mode in [False, True]:
+            with self.subTest(json_mode=json_mode):
+                client = Client('https://api.neuraldeep.ru/v1', 'test-key', 3000, json_mode=json_mode)
+                data = {'usage': {'prompt_tokens': 30, 'completion_tokens': 10},
+                        'choices': [{'message': {'content': '{"action":"answer","answer":"OK"}'}}]}
+                with patch.object(client.opener, 'open', return_value=io.BytesIO(json.dumps(data).encode())) as call:
+                    client.complete([], 32)
+                body = json.loads(call.call_args.args[0].data)
+                self.assertEqual(body.get('response_format'), {'type': 'json_object'} if json_mode else None)
+                self.assertEqual(client.snapshot()['weighted_tokens'], 13.0)
+                self.assertEqual(client.last_response_metadata['json_mode'], json_mode)
+
     def test_metadata_records_finish_and_reasoning_without_extra_charges(self):
         client = Client('https://api.neuraldeep.ru/v1', 'test-key', 3000)
         data = {'usage': {'prompt_tokens': 30, 'completion_tokens': 32,
@@ -126,6 +154,16 @@ class TelemetryTests(unittest.TestCase):
 
 
 class FormatComparisonTests(unittest.TestCase):
+    def test_json_pair_changes_only_response_format_flag_on_the_requested_suite(self):
+        args = ('image', Path('/snapshot'), Path('/reports'))
+        text = docker_command(*args, 'text', 4000, comparison='json-mode', suite='validation')
+        structured = docker_command(*args, 'json', 4000, comparison='json-mode', suite='validation')
+        self.assertIn('--enable-edit', text)
+        self.assertIn('--recover-actions', text)
+        self.assertIn('validation', text)
+        self.assertEqual([x.replace('/results/json.json', '/results/text.json') for x in structured[:-1]], text)
+        self.assertEqual(structured[-1], '--json-mode')
+
     def test_format_pair_changes_only_recovery_and_keeps_edit_in_both_arms(self):
         args = ('image', Path('/snapshot'), Path('/reports'))
         strict = docker_command(*args, 'strict', 3000, comparison='action-format')

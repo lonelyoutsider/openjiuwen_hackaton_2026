@@ -1,5 +1,6 @@
 """Parse model actions without evaluating code or repairing incomplete JSON."""
 import json
+import re
 
 
 FIELDS = {
@@ -49,7 +50,8 @@ def parse_action(content, *, recover=False):
         if tail:
             # A terminal fenced object is allowed; extra braces, explanation,
             # or a second object are not discarded.
-            if tail != "```" or not prefix.rstrip().endswith(("```json", "```")):
+            opening = re.search(r"(?:^|\n)[ \t]*```[A-Za-z0-9_+.-]*[ \t]*\n[ \t]*\Z", prefix)
+            if tail != "```" or opening is None:
                 raise ValueError("extra content after JSON action")
         mode = "recovered"
     if not isinstance(action, dict):

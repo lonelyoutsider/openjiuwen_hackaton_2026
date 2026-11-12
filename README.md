@@ -230,14 +230,16 @@ Python-инструмент имеет таймаут и лимиты CPU/RAM/в
 по умолчанию доступен прежний набор действий. Первая Qwen-пара дала одинаковые
 4/9 балла; edit не исполнился из-за формата ответа. Результат и причины:
 [docs/experiments/e01-result.md](docs/experiments/e01-result.md).
-Следующий эксперимент: [E01b](docs/experiments/action-format.md).
+E01b дал3/9 против5/9 в пользу recovery:
+[результат](docs/experiments/e01b-result.md).
+Следующий шаг: [JSON-mode compatibility probe](docs/experiments/json-mode.md).
 Для локального Codex актуальное состояние — docs/codex-handoff.md.
 
 ```powershell
-docker build --progress=plain -t its-ia:edit-experiment .
-py scripts/run_edit_experiment.py --comparison action-format --live
+py scripts/smoke_api.py --json-mode
 ```
 
-Запуск требует чистого checkout; одна пара ограничена суммарно 6000 учётными
-токенами. Отчёты сохраняются в отдельном каталоге artifacts/action-format-experiment-*.
+Сначала выполняется один небольшой probe без новой сборки Docker.
+Подготовленная после проверки совместимости пара на validation-v1 ограничена
+8000 учётными токенами суммарно; протокол содержит отдельную команду и условия.
 Не запускать серию параллельно с другой работой команды с API.

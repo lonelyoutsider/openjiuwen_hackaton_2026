@@ -18,6 +18,7 @@ async def main():
     parser.add_argument("--diagnostics", action="store_true", help="record bounded model actions and tool observations")
     parser.add_argument("--enable-edit", action="store_true", help="experimental exact text replacement in coding sources")
     parser.add_argument("--recover-actions", action="store_true", help="accept one complete terminal JSON action after commentary")
+    parser.add_argument("--json-mode", action="store_true", help="experimental provider JSON-object response format")
     parser.add_argument("--max-calls-per-task", type=int, default=6)
     parser.add_argument("--max-output-tokens", type=int, default=1024)
     parser.add_argument("--time-limit", type=int, default=3300)
@@ -53,7 +54,8 @@ async def main():
         from harness.llm import Client
         from harness.agent import Agent
         client = Client(os.environ.get("LLM_BASE_URL", "https://api.neuraldeep.ru/v1"),
-                        os.environ["LLM_API_KEY"], args.budget, model=args.model, deadline=deadline)
+                        os.environ["LLM_API_KEY"], args.budget, model=args.model, deadline=deadline,
+                        json_mode=args.json_mode)
         agent = Agent(client, max_calls=args.max_calls_per_task,
                       max_tokens=args.max_output_tokens, deadline=deadline, diagnostics=args.diagnostics,
                       enable_edit=args.enable_edit, recover_actions=args.recover_actions)

@@ -38,6 +38,10 @@ Runtime-сеть только к предоставленному прокси; 
   1911.6/1705.3 учётного токена, всего3616.9, usage известен.
   Edit не исполнился ни разу. Причины: пояснения вне JSON и консервативный
   резерв следующего запроса. Анализ: docs/experiments/e01-result.md.
+- E01b strict/recover: 1/3 и2/3, reward3/9 и5/9;1595.8/1617.6 токена,
+  вместе3213.4. Recovery принял edit intervals; ledger решён обоими.
+  Tags не решён за4 вызова: лишнее чтение и ошибка Python.
+  Во всех14 вызовах finish=stop, reasoning=0. См. docs/experiments/e01b-result.md.
 
 Это маленькие диагностические наборы, не hidden score. Нельзя смешивать
 измерения разных версий в новый полный результат. Подробности: progress.md.
@@ -46,16 +50,21 @@ Runtime-сеть только к предоставленному прокси; 
 
 1. Подготовлен E01: scripts/coding_edit_set.py, scripts/run_edit_experiment.py
    и opt-in --enable-edit. Протокол: docs/experiments/edit-tool.md.
-2. Ближайшая пара E01b — strict/recover с edit в обоих вариантах.
-   Протокол: docs/experiments/action-format.md. Recovery отключён по умолчанию.
+2. E01b выполнен. Исправлена обработка JSON в fenced-блоке с меткой python.
+   Подготовлен opt-in --json-mode и сравнение text/json.
+   Немедленный шаг — py scripts/smoke_api.py --json-mode: один запрос с cap32,
+   без Docker и автоповторов. Протокол: docs/experiments/json-mode.md.
 3. Далее отдельно исследовать повторы и распределение попыток.
 
-Первое парное live-сравнение ограничено 6000 учётными токенами суммарно,
-по 3000 на вариант, максимум 4 вызова на задачу, output cap1024,
-без автоматического повторения пары. Следующая команда после обновления/сборки:
-py scripts/run_edit_experiment.py --comparison action-format --live
-Не повторять исходную E01-пару без этого параметра. Результата E01b пока нет.
-Далее отдельно оценить адаптивный output cap: прежний резерв не убирать.
+Следующий live шаг — только небольшой compatibility probe JSON-mode,
+а не повтор E01/E01b. Вывод probe сначала передать для анализа.
+Подготовленная после него смешанная пара:
+py scripts/run_edit_experiment.py --comparison json-mode --suite validation --budget-per-arm 4000 --live
+Её отдельный потолок8000 учётных токенов, по4000 на вариант,4 вызова/задачу,
+output cap1024. Пока не выполнялась. Все новые флаги выключены по умолчанию.
+Не запускать автоматически, если probe не подтвердил формат и usage.
+Далее отдельно оценивать call allocation/reserve; не подменять задачу
+исправлением конкретного unicodedata.casefold в prompt под один кейс.
 
 ## Режим работы
 

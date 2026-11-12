@@ -17,7 +17,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 class Client:
-    def __init__(self, base_url, api_key, budget, *, model=MODELS[1], timeout=60, deadline=None):
+    def __init__(self, base_url, api_key, budget, *, model=MODELS[1], timeout=60, deadline=None, json_mode=False):
         parts = urllib.parse.urlsplit(base_url)
         if parts.scheme not in ("http", "https") or not parts.hostname or parts.username or parts.password or parts.query or parts.fragment:
             raise ValueError("invalid proxy URL")
@@ -29,6 +29,7 @@ class Client:
         self.stopped = False
         self.timeout, self.deadline, self.last_call = timeout, deadline, 0.0
         self.opener = urllib.request.build_opener(NoRedirect())
+        self.json_mode = json_mode
         self.last_request_metadata = self.last_response_metadata = None
 
     def complete(self, messages, max_tokens):
@@ -37,6 +38,8 @@ class Client:
             raise LLMStopped("API disabled after an uncertain or failed request")
         body = {"model": self.model, "messages": messages, "max_tokens": max_tokens,
                 "temperature": 0, "stream": False}
+        if self.json_mode:
+            body["response_format"] = {"type": "json_object"}
         payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
         # UTF-8 bytes + generous chat framing allowance is a conservative input
         # estimate, not an exact Qwen tokenizer. Unused reservation is released.
@@ -84,6 +87,7 @@ class Client:
             if type(reasoning) is not int or reasoning < 0:
                 reasoning = None
             self.last_response_metadata = {"finish_reason": finish, "reasoning_tokens": reasoning,
+                "json_mode": self.json_mode,
                 "input_tokens": prompt, "output_tokens": completion, "max_output_tokens": max_tokens,
                 "content_chars": len(content) if isinstance(content, str) else None}
             return content

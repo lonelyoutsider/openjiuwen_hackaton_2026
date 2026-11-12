@@ -22,10 +22,15 @@ class WorkflowIntegrationTests(unittest.TestCase):
     def test_real_workflow_recovers_complete_action_after_commentary(self):
         self._run_workflow(enable_edit=True, recover_actions=True)
 
-    def _run_workflow(self, enable_edit, recover_actions=False):
+    def test_real_workflow_forwards_provider_json_mode(self):
+        self._run_workflow(enable_edit=True, json_mode=True)
+
+    def _run_workflow(self, enable_edit, recover_actions=False, json_mode=False):
         class Provider(http.server.BaseHTTPRequestHandler):
             def do_POST(self):
                 request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                if request.get('response_format') != ({'type': 'json_object'} if json_mode else None):
+                    raise AssertionError('JSON mode did not reach the provider as configured')
                 messages = request["messages"]
                 if "Task type: coding" in messages[1]["content"]:
                     if enable_edit:
@@ -70,7 +75,8 @@ class WorkflowIntegrationTests(unittest.TestCase):
             try:
                 run = subprocess.run([sys.executable, str(repo / "run_agent.py"), "--tasks-dir", str(root),
                     "--budget", "5000", "--diagnostics", *(["--enable-edit"] if enable_edit else []),
-                    *(["--recover-actions"] if recover_actions else [])],
+                    *(["--recover-actions"] if recover_actions else []),
+                    *(["--json-mode"] if json_mode else [])],
                     env=env, capture_output=True, text=True, timeout=90)
             finally:
                 server.shutdown(); server.server_close(); thread.join(timeout=5)

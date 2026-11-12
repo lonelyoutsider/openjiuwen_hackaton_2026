@@ -53,6 +53,7 @@ def main():
     parser.add_argument('--suite', choices=['public', 'validation', 'coding-edit'], default='public')
     parser.add_argument('--enable-edit', action='store_true')
     parser.add_argument('--recover-actions', action='store_true')
+    parser.add_argument('--json-mode', action='store_true')
     parser.add_argument('--quiet', action='store_true', help='capture SDK logs; print case outcomes and summary')
     parser.add_argument('--only', help='comma-separated case IDs for a targeted experiment')
     parser.add_argument('--diagnostics', action='store_true')
@@ -92,6 +93,8 @@ def main():
             options += ['--enable-edit']
         if args.recover_actions:
             options += ['--recover-actions']
+        if args.json_mode:
+            options += ['--json-mode']
         started = time.monotonic()
         run = subprocess.run([sys.executable, str(REPO / 'run_agent.py'), '--tasks-dir', str(root),
                               '--engine', args.engine, *options], cwd=REPO, timeout=360,
@@ -127,6 +130,7 @@ def main():
             print(f"{name}: {outcome}; calls={row['llm_calls']}; tokens={row['weighted_tokens']:.1f}; status={row['status']}", flush=True)
         summary = {'dataset': args.suite + '; not hidden score', 'engine': args.engine,
                    'enable_edit': args.enable_edit, 'recover_actions': args.recover_actions,
+                   'json_mode': args.json_mode,
                    'elapsed_seconds': round(elapsed, 3),
                    'model': os.environ.get('LLM_MODEL', 'qwen3.8-27b-noreason') if args.llm else None,
                    'budget': args.budget if args.llm else 0,
