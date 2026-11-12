@@ -14,12 +14,23 @@ import unittest
 @unittest.skipUnless(importlib.util.find_spec("openjiuwen"), "openJiuwen not installed")
 class WorkflowIntegrationTests(unittest.TestCase):
     def test_real_workflow_against_local_fake_provider(self):
+        self._run_workflow(enable_edit=False)
+
+    def test_real_workflow_routes_edit_flag_and_runs_tests(self):
+        self._run_workflow(enable_edit=True)
+
+    def _run_workflow(self, enable_edit):
         class Provider(http.server.BaseHTTPRequestHandler):
             def do_POST(self):
                 request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
                 messages = request["messages"]
                 if "Task type: coding" in messages[1]["content"]:
-                    action = {"action": "write", "path": "mylib.py", "content": "def add(a,b):\n    return a+b\n"}
+                    if enable_edit:
+                        if "Additional coding action:" not in messages[0]["content"]:
+                            raise AssertionError("edit flag did not reach the workflow agent")
+                        action = {"action": "edit", "path": "mylib.py", "old_text": "a-b", "new_text": "a+b"}
+                    else:
+                        action = {"action": "write", "path": "mylib.py", "content": "def add(a,b):\n    return a+b\n"}
                 elif len(messages) > 2:
                     action = {"action": "answer", "answer": "51"}
                 else:
@@ -51,7 +62,8 @@ class WorkflowIntegrationTests(unittest.TestCase):
             repo = Path(__file__).resolve().parents[1]
             try:
                 run = subprocess.run([sys.executable, str(repo / "run_agent.py"), "--tasks-dir", str(root),
-                    "--budget", "5000"], env=env, capture_output=True, text=True, timeout=90)
+                    "--budget", "5000", *(["--enable-edit"] if enable_edit else [])],
+                    env=env, capture_output=True, text=True, timeout=90)
             finally:
                 server.shutdown(); server.server_close(); thread.join(timeout=5)
             self.assertEqual(run.returncode, 0, run.stderr[-3000:] + run.stdout[-3000:])

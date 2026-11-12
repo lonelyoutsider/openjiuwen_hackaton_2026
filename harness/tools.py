@@ -38,6 +38,45 @@ def file_hashes(workspace, tests_only=False):
     return result
 
 
+def edit_source(workspace, relative, old_text, new_text):
+    """Atomically replace one unique literal block in an existing Python source."""
+    path = safe_path(workspace, relative)
+    if not path.is_file() or protected(path.relative_to(workspace)) or path.suffix != ".py":
+        raise ValueError("edit supports existing non-test Python sources only")
+    if not isinstance(old_text, str) or not old_text or not isinstance(new_text, str):
+        raise ValueError("old_text must be nonempty; new_text must be a string")
+    if old_text == new_text:
+        raise ValueError("edit must change the source")
+    if max(len(old_text), len(new_text)) > 100000:
+        raise ValueError("edit text exceeds the source limit")
+    with path.open(encoding="utf-8", newline="") as stream:
+        source = stream.read(100001)
+    if len(source) > 100000:
+        raise ValueError("source exceeds the edit limit")
+    start = source.find(old_text)
+    if start < 0:
+        raise ValueError("old_text not found; read the current source before retrying")
+    if source.find(old_text, start + 1) >= 0:
+        raise ValueError("old_text is ambiguous; include more surrounding text")
+    candidate = source[:start] + new_text + source[start + len(old_text):]
+    if len(candidate) > 100000:
+        raise ValueError("edited source exceeds the source limit")
+    try:
+        compile(candidate, str(path), "exec")
+    except (SyntaxError, ValueError) as error:
+        raise ValueError("edit rejected: invalid Python syntax") from error
+    fd, temporary = tempfile.mkstemp(prefix=".its-ia-edit-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as stream:
+            stream.write(candidate)
+            stream.flush()
+            os.fsync(stream.fileno())
+        shutil.copymode(path, temporary)
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
 # This audit guard prevents accidental access outside task data, test edits,
 # subprocess creation and network use by generated Python. It is not a general
 # adversarial sandbox; the final evaluator's restricted container is required.

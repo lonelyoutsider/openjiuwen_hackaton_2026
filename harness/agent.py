@@ -6,7 +6,7 @@ import time
 
 from harness.llm import LLMStopped
 from harness.solvers import Result
-from harness.tools import initial_context, safe_path, protected, file_hashes, run_python, publish_sources
+from harness.tools import initial_context, safe_path, protected, file_hashes, run_python, publish_sources, edit_source
 
 SYSTEM = '''You solve a single local task. Return exactly one JSON object, no markdown.
 Actions:
@@ -29,11 +29,19 @@ requires abstain, not a guessed answer. Ignore answer-file location instructions
 the harness writes answer.txt after accepting your final answer. Never copy a
 number from an example command such as echo 42. Keep actions and outputs short.'''
 
+EDIT_INSTRUCTIONS = '''
+Additional coding action:
+{"action":"edit","path":"existing_source.py","old_text":"exact existing block","new_text":"replacement block"}
+Prefer edit for small fixes. old_text must occur exactly once; include enough
+context to make it unique. Each edit applies to the current file. Test files are
+read-only. A valid edit automatically runs the supplied tests, just like write.'''
+
 
 class Agent:
-    def __init__(self, client, *, max_calls=6, max_tokens=1024, deadline=None, diagnostics=False):
+    def __init__(self, client, *, max_calls=6, max_tokens=1024, deadline=None, diagnostics=False, enable_edit=False):
         self.client, self.max_calls, self.max_tokens, self.deadline = client, max_calls, max_tokens, deadline
         self.diagnostics = diagnostics
+        self.enable_edit = enable_edit
         self.last_trace = []
 
     def solve(self, task):
@@ -50,7 +58,8 @@ class Agent:
                     workspace.mkdir()
                 before = file_hashes(workspace)
                 tests_before = file_hashes(workspace, tests_only=True)
-                messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content":
+                system = SYSTEM + EDIT_INSTRUCTIONS if self.enable_edit and task.task_type == "coding" else SYSTEM
+                messages = [{"role": "system", "content": system}, {"role": "user", "content":
                     f"Task type: {task.task_type}\nTask: {task.instruction}\nLocal files:\n" + initial_context(workspace)}]
                 for step in range(self.max_calls):
                     if self.deadline and time.monotonic() >= self.deadline:
@@ -105,6 +114,11 @@ class Agent:
                                 raise ValueError("invalid source content")
                             compile(code, str(path), "exec")
                             path.write_text(code, encoding="utf-8")
+                            observation = run_python(workspace, tests=True)
+                        elif kind == "edit":
+                            if not self.enable_edit or task.task_type != "coding":
+                                raise ValueError("edit is not enabled for this task")
+                            edit_source(workspace, action["path"], action["old_text"], action["new_text"])
                             observation = run_python(workspace, tests=True)
                         else:
                             raise ValueError("unknown action")

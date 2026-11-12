@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
@@ -49,7 +50,8 @@ def main():
     parser.add_argument('--engine', choices=['openjiuwen', 'stdlib'], default='openjiuwen')
     parser.add_argument('--llm', action='store_true')
     parser.add_argument('--budget', type=int, default=3000)
-    parser.add_argument('--suite', choices=['public', 'validation'], default='public')
+    parser.add_argument('--suite', choices=['public', 'validation', 'coding-edit'], default='public')
+    parser.add_argument('--enable-edit', action='store_true')
     parser.add_argument('--quiet', action='store_true', help='capture SDK logs; print case outcomes and summary')
     parser.add_argument('--only', help='comma-separated case IDs for a targeted experiment')
     parser.add_argument('--diagnostics', action='store_true')
@@ -63,9 +65,12 @@ def main():
             source = REPO / 'examples/task-dir'
             labels = {p.parent.name: json.loads(p.read_text(encoding='utf-8')) for p in source.glob('*/task.json')}
             shutil.copytree(source, root)
-        else:
+        elif args.suite == 'validation':
             from scripts.validation_set import build_validation_set
             labels = build_validation_set(root)
+        else:
+            from scripts.coding_edit_set import build_coding_edit_set
+            labels = build_coding_edit_set(root)
         if args.only:
             selected = set(args.only.split(','))
             unknown = selected - set(labels)
@@ -78,12 +83,17 @@ def main():
             data = json.loads(path.read_text(encoding='utf-8'))
             data.pop('expected', None)
             path.write_text(json.dumps(data), encoding='utf-8')
-        options = ['--budget', str(args.budget), '--time-limit', '300', '--max-calls-per-task', '4'] if args.llm else ['--no-llm']
+        options = ['--budget', str(args.budget), '--time-limit', '300', '--max-calls-per-task', '4',
+                   '--max-output-tokens', '1024'] if args.llm else ['--no-llm']
         if args.diagnostics:
             options += ['--diagnostics']
+        if args.enable_edit:
+            options += ['--enable-edit']
+        started = time.monotonic()
         run = subprocess.run([sys.executable, str(REPO / 'run_agent.py'), '--tasks-dir', str(root),
                               '--engine', args.engine, *options], cwd=REPO, timeout=360,
                              capture_output=args.quiet, text=True)
+        elapsed = time.monotonic() - started
         if args.quiet and run.returncode:
             print('\n'.join(((run.stderr or '') + (run.stdout or '')).splitlines()[-30:]), file=sys.stderr)
         rows = []
@@ -101,6 +111,7 @@ def main():
                    'answer': answer, 'expected': label['expected'], 'reward': label['reward'],
                    'status': record.get('status', 'not_recorded'), 'reason': record.get('reason', ''),
                    'llm_calls': record.get('llm_calls', 0), 'weighted_tokens': record.get('weighted_tokens', 0),
+                   'input_tokens': record.get('input_tokens', 0), 'output_tokens': record.get('output_tokens', 0),
                    'usage_uncertain': record.get('usage_uncertain', False)}
             if args.diagnostics:
                 row['diagnostics'] = record.get('diagnostics', [])
@@ -112,6 +123,7 @@ def main():
             rows.append(row)
             print(f"{name}: {outcome}; calls={row['llm_calls']}; tokens={row['weighted_tokens']:.1f}; status={row['status']}", flush=True)
         summary = {'dataset': args.suite + '; not hidden score', 'engine': args.engine,
+                   'enable_edit': args.enable_edit, 'elapsed_seconds': round(elapsed, 3),
                    'model': os.environ.get('LLM_MODEL', 'qwen3.8-27b-noreason') if args.llm else None,
                    'budget': args.budget if args.llm else 0,
                    'correct': sum(r['correct'] for r in rows), 'tasks': len(rows),
@@ -122,6 +134,8 @@ def main():
                    'missing_data_answered': sum(not r['known_solvable'] and r['answer'] is not None for r in rows),
                    'false_abstentions': sum(r['known_solvable'] and r['status'] == 'insufficient_data' for r in rows),
                    'llm_calls': sum(r['llm_calls'] for r in rows),
+                   'input_tokens': sum(r['input_tokens'] for r in rows),
+                   'output_tokens': sum(r['output_tokens'] for r in rows),
                    'weighted_tokens': round(sum(r['weighted_tokens'] for r in rows), 4),
                    'usage_uncertain': any(r['usage_uncertain'] for r in rows),
                    'agent_exit_code': run.returncode}
