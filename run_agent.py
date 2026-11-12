@@ -17,6 +17,7 @@ async def main():
     parser.add_argument("--no-llm", action="store_true")
     parser.add_argument("--diagnostics", action="store_true", help="record bounded model actions and tool observations")
     parser.add_argument("--enable-edit", action="store_true", help="experimental exact text replacement in coding sources")
+    parser.add_argument("--recover-actions", action="store_true", help="accept one complete terminal JSON action after commentary")
     parser.add_argument("--max-calls-per-task", type=int, default=6)
     parser.add_argument("--max-output-tokens", type=int, default=1024)
     parser.add_argument("--time-limit", type=int, default=3300)
@@ -55,7 +56,7 @@ async def main():
                         os.environ["LLM_API_KEY"], args.budget, model=args.model, deadline=deadline)
         agent = Agent(client, max_calls=args.max_calls_per_task,
                       max_tokens=args.max_output_tokens, deadline=deadline, diagnostics=args.diagnostics,
-                      enable_edit=args.enable_edit)
+                      enable_edit=args.enable_edit, recover_actions=args.recover_actions)
         if args.engine == "openjiuwen":
             flow = build_workflow(agent)
         # Initial cost estimates are explicit heuristics, not trained predictions.

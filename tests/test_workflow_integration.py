@@ -19,7 +19,10 @@ class WorkflowIntegrationTests(unittest.TestCase):
     def test_real_workflow_routes_edit_flag_and_runs_tests(self):
         self._run_workflow(enable_edit=True)
 
-    def _run_workflow(self, enable_edit):
+    def test_real_workflow_recovers_complete_action_after_commentary(self):
+        self._run_workflow(enable_edit=True, recover_actions=True)
+
+    def _run_workflow(self, enable_edit, recover_actions=False):
         class Provider(http.server.BaseHTTPRequestHandler):
             def do_POST(self):
                 request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
@@ -35,8 +38,12 @@ class WorkflowIntegrationTests(unittest.TestCase):
                     action = {"action": "answer", "answer": "51"}
                 else:
                     action = {"action": "python", "code": "print(17*3)"}
-                data = {"choices": [{"message": {"content": json.dumps(action)}}],
-                        "usage": {"prompt_tokens": 200, "completion_tokens": 100}}
+                text = json.dumps(action)
+                if recover_actions:
+                    text = "I have selected the following action.\n" + text
+                data = {"choices": [{"message": {"content": text}, "finish_reason": "stop"}],
+                        "usage": {"prompt_tokens": 200, "completion_tokens": 100,
+                                  "completion_tokens_details": {"reasoning_tokens": 5}}}
                 self.send_response(200); self.end_headers()
                 self.wfile.write(json.dumps(data).encode())
 
@@ -62,7 +69,8 @@ class WorkflowIntegrationTests(unittest.TestCase):
             repo = Path(__file__).resolve().parents[1]
             try:
                 run = subprocess.run([sys.executable, str(repo / "run_agent.py"), "--tasks-dir", str(root),
-                    "--budget", "5000", *(["--enable-edit"] if enable_edit else [])],
+                    "--budget", "5000", "--diagnostics", *(["--enable-edit"] if enable_edit else []),
+                    *(["--recover-actions"] if recover_actions else [])],
                     env=env, capture_output=True, text=True, timeout=90)
             finally:
                 server.shutdown(); server.server_close(); thread.join(timeout=5)
@@ -74,6 +82,9 @@ class WorkflowIntegrationTests(unittest.TestCase):
             self.assertEqual(record["llm_calls"], 1)
             self.assertEqual(record["weighted_tokens"], 120)
             self.assertEqual(record["backend"], "llm")
+            self.assertEqual(record["diagnostics"][0]["api"]["finish_reason"], "stop")
+            self.assertEqual(record["diagnostics"][0]["api"]["reasoning_tokens"], 5)
+            self.assertEqual(record["diagnostics"][0]["action_parse"], "recovered" if recover_actions else "strict")
 
 
 if __name__ == "__main__":

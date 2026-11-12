@@ -29,8 +29,10 @@ class Client:
         self.stopped = False
         self.timeout, self.deadline, self.last_call = timeout, deadline, 0.0
         self.opener = urllib.request.build_opener(NoRedirect())
+        self.last_request_metadata = self.last_response_metadata = None
 
     def complete(self, messages, max_tokens):
+        self.last_request_metadata = self.last_response_metadata = None
         if self.stopped:
             raise LLMStopped("API disabled after an uncertain or failed request")
         body = {"model": self.model, "messages": messages, "max_tokens": max_tokens,
@@ -39,6 +41,9 @@ class Client:
         # UTF-8 bytes + generous chat framing allowance is a conservative input
         # estimate, not an exact Qwen tokenizer. Unused reservation is released.
         reserve = len(payload) + 1024 + max_tokens * 10
+        self.last_request_metadata = {"request_sent": False, "max_output_tokens": max_tokens,
+            "reservation_weighted_tokens": reserve / 10,
+            "remaining_weighted_tokens": (self.limit - self.spent) / 10}
         if self.spent + reserve > self.limit:
             raise LLMStopped("not enough budget for a conservative request reservation")
         pause = max(0.0, 1.05 - (time.monotonic() - self.last_call))
@@ -54,6 +59,7 @@ class Client:
         # Charge reservation until authoritative usage has arrived. Never
         # automatically retry a request whose billable outcome is unknown.
         self.spent += reserve
+        self.last_request_metadata["request_sent"] = True
         try:
             with self.opener.open(request, timeout=min(self.timeout, remaining)) as response:
                 data = json.loads(response.read(2_000_000).decode("utf-8"))
@@ -68,7 +74,19 @@ class Client:
             self.completion_tokens += completion
             if self.spent >= self.limit:
                 self.stopped = True
-            return data["choices"][0]["message"]["content"]
+            choice = data["choices"][0]
+            content = choice["message"]["content"]
+            finish = choice.get("finish_reason")
+            if finish not in (None, "stop", "length", "tool_calls", "function_call", "content_filter"):
+                finish = "other"
+            details = usage.get("completion_tokens_details")
+            reasoning = details.get("reasoning_tokens") if isinstance(details, dict) else None
+            if type(reasoning) is not int or reasoning < 0:
+                reasoning = None
+            self.last_response_metadata = {"finish_reason": finish, "reasoning_tokens": reasoning,
+                "input_tokens": prompt, "output_tokens": completion, "max_output_tokens": max_tokens,
+                "content_chars": len(content) if isinstance(content, str) else None}
+            return content
         except Exception as error:
             self.stopped = True
             # Do not expose provider response bodies, headers or API credentials.
