@@ -544,3 +544,25 @@ commit8b2577d8502e39f335cd860e383fbd7b899052f2.
 - После confirmation:выбор defaults,проверка стандартного запуска без feature
   flag,проверенный checkpoint main до23:59 МСК. Дальнейшие format-reset/feedback/
   scheduling требуют отдельной оценки. Доступ madrugado проверен снова:none.
+
+
+## 2026-11-13 — финализация по просьбе пользователя
+
+- До дедлайна осталось30 минут, пользователь без ноутбука. Новые live-прогоны
+  остановлены. Выбран лучший измеренный E04 compact165/195 против130/195.
+- Compact стал default обычного CLI, с явным отрицательным override.
+  Контрольные оценщики явно передают OFF; release-defaults без override
+  наследует новый профиль и правильно записывает эффективную конфигурацию.
+- Другие runtime-алгоритмы/модель/зависимости не менялись. Reliability fixes
+  SDK timeout/ledger/write уже в main через PR8.
+- Добавлена SDK/fake HTTP проверка:обычный CLI без feature flags передаёт
+  провайдеру маркированный короткий preview большого файла и решает задачи.
+- Confirmation40 и новая regression21 не выполнены, новый live/image после
+  default-switch не проверен. Старый51/51 не приписывается новому дереву.
+- promsoft=write,madrugado=none; доступ и письмо с URL остаются срочными
+  действиями владельца/организаторов. Видимость repo не менялась.
+- Итоговый контракт и ограничения:submission-2026-11-13.md.
+- Финальная проверка завершена:Python3.12.14,openJiuwen0.1.19,113/113 PASS,
+  без skipped,53.110с. CLI/default compact и малый BUDGET через fake HTTP PASS.
+  Публичный stdlib6/8,16/20,0 токенов,exit0; синтаксис/whitespace PASS.
+  Docker/live после default-switch не запускались.

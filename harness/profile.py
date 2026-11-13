@@ -3,6 +3,7 @@ from urllib.parse import urlsplit
 
 DEFAULT_MODEL = "qwen3.8-27b-noreason"
 DEFAULT_CALLS = 6
+DEFAULT_COMPACT_DATA_CONTEXT = True
 
 
 def resolve_json_mode(base_url, override=None):

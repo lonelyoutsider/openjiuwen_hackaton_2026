@@ -30,7 +30,7 @@ def docker_command(image, snapshot, reports, partition, budget, response_format,
         '--suite',suite,'--partition',partition,'--format',response_format,
         '--release-defaults','--llm','--budget',str(budget),'--diagnostics','--quiet',
         '--report','/results/benchmark.json']
-    if compact_data_context:command.append('--compact-data-context')
+    command.append('--compact-data-context' if compact_data_context else '--no-compact-data-context')
     return command
 
 

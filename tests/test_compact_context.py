@@ -61,7 +61,8 @@ class ContextTests(unittest.TestCase):
         args=('image',Path('/snapshot'),Path('/reports'),'calibration',12000,'plain')
         control=docker_command(*args);compact=docker_command(*args,compact_data_context=True)
         self.assertNotIn('--compact-data-context',control)
-        self.assertEqual(compact,control+['--compact-data-context'])
+        self.assertEqual(control[-1], '--no-compact-data-context')
+        self.assertEqual(compact,control[:-1]+['--compact-data-context'])
 
     def test_pair_is_dry_and_budget_is_fixed_before_requests(self):
         with patch('scripts.run_context_experiment.subprocess.run') as run,patch('scripts.run_context_experiment.getpass.getpass') as key,contextlib.redirect_stdout(io.StringIO()) as out:

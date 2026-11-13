@@ -14,7 +14,7 @@ import time
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 from harness.tools import run_python
-from harness.profile import DEFAULT_MODEL, DEFAULT_CALLS, resolve_json_mode
+from harness.profile import DEFAULT_MODEL, DEFAULT_CALLS, DEFAULT_COMPACT_DATA_CONTEXT, resolve_json_mode
 
 
 def normalized_json(text):
@@ -82,7 +82,7 @@ def main():
     parser.add_argument('--suite', choices=['public', 'validation', 'coding-edit', 'release', 'challenge'], default='public')
     parser.add_argument('--partition', choices=['all','smoke','calibration','confirmation'], default='all')
     parser.add_argument('--format', choices=['auto','plain','json'], default='auto', help='image-profile JSON mode override; plain simulates an unfamiliar judging proxy payload')
-    parser.add_argument('--compact-data-context',action='store_true')
+    parser.add_argument('--compact-data-context', action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument('--release-defaults', action='store_true', help='invoke the image /app/run_agent.py with only tasks-dir and BUDGET env')
     parser.add_argument('--enable-edit', action='store_true')
     parser.add_argument('--recover-actions', action='store_true')
@@ -153,7 +153,9 @@ def main():
                 child_env.pop('ITS_IA_DIAGNOSTICS', None)
         started = time.monotonic()
         command = [sys.executable, str(entrypoint), '--tasks-dir', str(root)]
-        if args.compact_data_context:options += ['--compact-data-context']
+        compact_data_context = (DEFAULT_COMPACT_DATA_CONTEXT if args.release_defaults else False) if args.compact_data_context is None else args.compact_data_context
+        if args.compact_data_context is not None or not args.release_defaults:
+            options += ['--compact-data-context' if compact_data_context else '--no-compact-data-context']
         if not args.release_defaults:
             command += ['--engine', args.engine]
         run = subprocess.run([*command, *options], cwd='/app' if args.release_defaults else REPO,
@@ -197,7 +199,7 @@ def main():
                                  None if args.format == 'auto' else args.format == 'json')
                                  if args.release_defaults else args.json_mode),
                    'partition': args.partition, 'format_override': args.format,
-                   'compact_data_context':args.compact_data_context,
+                   'compact_data_context':compact_data_context,
                    'release_defaults': args.release_defaults,
                    'max_calls_per_task': DEFAULT_CALLS if args.release_defaults else 4,
                    'elapsed_seconds': round(elapsed, 3),

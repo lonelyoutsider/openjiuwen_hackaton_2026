@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from harness.execution import execute
 from harness.tasks import load_tasks
-from harness.profile import DEFAULT_MODEL, DEFAULT_CALLS, resolve_json_mode
+from harness.profile import DEFAULT_MODEL, DEFAULT_CALLS, DEFAULT_COMPACT_DATA_CONTEXT, resolve_json_mode
 
 
 async def main():
@@ -20,7 +20,9 @@ async def main():
     parser.add_argument("--enable-edit", action=argparse.BooleanOptionalAction, default=True, help="exact text replacement in coding sources")
     parser.add_argument("--recover-actions", action=argparse.BooleanOptionalAction, default=True, help="accept one complete terminal JSON action after commentary")
     parser.add_argument("--json-mode", action=argparse.BooleanOptionalAction, default=None, help="provider JSON format; auto only for the verified NeuralDeep HTTPS endpoint")
-    parser.add_argument("--compact-data-context", action="store_true", help="experimental short, explicitly marked previews of data files")
+    parser.add_argument("--compact-data-context", action=argparse.BooleanOptionalAction,
+                        default=DEFAULT_COMPACT_DATA_CONTEXT,
+                        help="short, explicitly marked previews of data files; full files remain available to tools")
     parser.add_argument("--max-calls-per-task", type=int, default=DEFAULT_CALLS)
     parser.add_argument("--max-output-tokens", type=int, default=1024)
     parser.add_argument("--time-limit", type=int, default=3300)
