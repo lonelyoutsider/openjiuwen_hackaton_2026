@@ -9,7 +9,10 @@ E02 завершён: text/json оба21/21 на validation-v1, JSON дешев�
 в одной паре. Релизный кандидат: edit/recovery ON, JSON auto на проверенном
 NeuralDeep endpoint,6 вызовов/задачу. После нового прямого уточнения о переменном
 BUDGET добавлен adaptive output cap при сохранении консервативного input-резерва.
-Следующий шаг — один image-default check на21 случае, потолок10000, затем main/freeze.
+Image-default check выполнен:19/19 выполнимых,51/51 reward,3360.8 токена,
+2 правильных отказа,image1.36GB. Сохраняем проверенный runtime в main через PR7;
+дальше синхронизация локальной main и подтверждение доступа/сдачи.
+Результат: [release-2026-11-13.md](release-2026-11-13.md).
 Актуальные команды и ограничения: [final-day.md](final-day.md).
 Дедлайн13 ноября23:59 МСК, email со ссылкой теперь обязателен; madrugado pending.
 

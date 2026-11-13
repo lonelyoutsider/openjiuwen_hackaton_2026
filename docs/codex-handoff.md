@@ -1,13 +1,20 @@
 # Контекст для VS Code / Codex,13 ноября2026
 
-Repo lonelyoutsider/openjiuwen_hackaton_2026, ветка experiment/coding-edit-ab,
-PR7. Прочитать AGENTS.md, requirements.md, final-day.md и progress.md.
-main покаf6715b5; новые defaults нужно после проверки перенести в main до дедлайна.
+Repo lonelyoutsider/openjiuwen_hackaton_2026. Сдаваемая ветка — main,
+интеграция проверенного кандидата — PR7. Прочитать AGENTS.md, requirements.md,
+release-2026-11-13.md, final-day.md и progress.md.
 
-Дедлайн13 ноября23:59 МСК. Ссылку на repo обязательно отправить
-openjiuwen_org@nsu.ru: новое уточнение заменяет старое «email не нужен».
-promsoft и MikhailOnyanov имеют write, madrugado pending по сообщению пользователя.
-Письмо ассистентом не отправлялось. Не считать приглашение принятым.
+Release-check наc55c490 завершён:19/19 выполнимых,51/51 reward,2 правильных
+отказа,3360.8 токена,24 вызова,90.558с,exit0,usage известен,image1.36GB.
+Source fingerprint ead9793f405a0565a7c1d01d89a4d8101c47998ba48ac752382e730beadb242e.
+Все7 coding-кандидатов повторно проверены offline:PASS. Runtime после этого
+прогона не менять без конкретной новой причины и её валидации. Остались
+организационные действия и синхронизация локальной main, не новая API-серия.
+
+Дедлайн13 ноября23:59 МСК. Пользователь отправил письмо с просьбой принять
+приглашение в repo. Наличие ссылки в тексте и получение оргкомитетом не проверены.
+URL нужен на openjiuwen_org@nsu.ru. promsoft=write, madrugado=none по GitHub
+после прогона. Не считать pending принятым. Утром14-го проверить #teams.
 
 ## Постановка и состояние
 
@@ -27,7 +34,7 @@ Runtime-сеть только предоставленный прокси, бе�
 Это одна пара, не hidden score. Подробности experiments/e02-result.md.
 Ранее публичные8: deterministic16/20, live20/20 за850.6 токена.
 E01 coding3: оба4/9, edit не исполнился из-за формата. E01b recovery5/9 против
-strict3/9. Tags тогда не решён, нельзя объявлять все регрессии пройденными.
+strict3/9. Tags тогда не решён; в новом release-check он прошёл за3 вызова.
 
 ## Релизный кандидат
 
@@ -38,24 +45,18 @@ JSON auto только HTTPS api.neuraldeep.ru:443; неизвестный ад�
 Boolean override-флаги доступны; A/B оценщик явно задаёт оба режима, чтобы
 новые defaults не испортили контрольный вариант.
 
-Следующий один запуск на Windows в корне текущей ветки:
+Следующий локальный шаг после merge PR7: git fetch origin; git switch main;
+git pull --ff-only; git log -1 --oneline; git status --short. Уже собранный
+image соответствует проверенному runtime; документирование результата его
+не меняет. API и Docker build повторять не требуется без новой причины.
 
-git pull --ff-only
-docker build --progress=plain -t its-ia:release .
-py scripts/run_release_check.py --live
-
-Потолок10000 на21 случай: public8 + coding3 + свежие10;19 решаемых/51 reward.
-Скрипт замораживает commit, проверяет image fingerprint без сети до ввода ключа,
-запускает агент из /app с --tasks-dir и BUDGET env, не из mounted /repo.
-Read-only root, /tmp2GB, CPU8/RAM16GB. ITS_IA_DIAGNOSTICS включает лишь лог.
-Передать artifacts/release-*/release.json. Не повторять probe или E02.
-Это dev-тест с NeuralDeep, не финальный proxy или скрытые отборочные2 задачи.
-
-После отчёта — исправить конкретные сбои, проверить, merge PR7, freeze main SHA.
-Не добавлять сегодня другие модели/swarm/обучение/переписывание очереди.
-Не запускать параллельные серии с командным ключом. Не подгонять код под IDs,
-expected, будущие шаги. Не менять official examples. Новые случаи после запуска
-тоже считаются development, а не новым независимым holdout.
+Release-check выполнен: public8 + coding3 + свежие10,19/19 и51/51.
+Команда агента была /app/run_agent.py --tasks-dir с BUDGET env, не /repo;
+read-only root, /tmp2GB, CPU8/RAM16GB. ITS_IA_DIAGNOSTICS включал лишь лог.
+Это dev-тест с JSON/NeuralDeep, не финальный proxy или скрытые отборочные2 задачи.
+Сырые traces остаются локальными; публичная сводка в release-2026-11-13.md.
+Не повторять probe/E02/release-check автоматически. Не добавлять новые
+модели/swarm/обучение/переписывание очереди в зафиксированную версию.
 
 ## Совместная работа
 
