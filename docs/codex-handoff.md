@@ -1,6 +1,12 @@
 # Актуальный контекст для VS Code / Codex
 
-Обновлено 12 ноября 2026. Repo: lonelyoutsider/openjiuwen_hackaton_2026.
+Обновлено13 ноября2026. Repo: lonelyoutsider/openjiuwen_hackaton_2026.
+
+Срочный план завершения: docs/final-day.md. Сейчас нет задачи расширять
+харнесс: одна смешанная пара, выбор профиля, стандартный Docker-прогон, main.
+JSON probe прошёл за12.7 токена. PR7 открыт, флаги по умолчанию выключены.
+Доступ madrugado не подтверждён; promsoft и MikhailOnyanov имеют write.
+Не считать приглашение уже принятым. Точный час дедлайна ещё неизвестен.
 
 Прочитать AGENTS.md, docs/requirements.md, docs/progress.md, docs/plan.md.
 Исследование харнессов: docs/harness-research-2026-11-12.md.
@@ -50,21 +56,20 @@ Runtime-сеть только к предоставленному прокси; 
 
 1. Подготовлен E01: scripts/coding_edit_set.py, scripts/run_edit_experiment.py
    и opt-in --enable-edit. Протокол: docs/experiments/edit-tool.md.
-2. E01b выполнен. Исправлена обработка JSON в fenced-блоке с меткой python.
-   Подготовлен opt-in --json-mode и сравнение text/json.
-   Немедленный шаг — py scripts/smoke_api.py --json-mode: один запрос с cap32,
-   без Docker и автоповторов. Протокол: docs/experiments/json-mode.md.
+2. E01b и JSON compatibility probe выполнены. Probe: prompt27/output10,
+   корректный JSON,12.7 учётного токена. Больше его не повторять.
+   Сейчас одно сравнение text/json на validation-v1, по4000 на вариант.
 3. Далее отдельно исследовать повторы и распределение попыток.
 
-Следующий live шаг — только небольшой compatibility probe JSON-mode,
-а не повтор E01/E01b. Вывод probe сначала передать для анализа.
-Подготовленная после него смешанная пара:
+Следующий live шаг после сборки образа:
 py scripts/run_edit_experiment.py --comparison json-mode --suite validation --budget-per-arm 4000 --live
-Её отдельный потолок8000 учётных токенов, по4000 на вариант,4 вызова/задачу,
-output cap1024. Пока не выполнялась. Все новые флаги выключены по умолчанию.
-Не запускать автоматически, если probe не подтвердил формат и usage.
-Далее отдельно оценивать call allocation/reserve; не подменять задачу
-исправлением конкретного unicodedata.casefold в prompt под один кейс.
+Потолок8000 на пару, по4000 на вариант,4 вызова/задачу, output cap1024.
+Все новые флаги пока выключены по умолчанию: после выбора нужно закрепить
+реальный релизный профиль, проверить именно команду жюри без дополнительных
+флагов и включить изменения в main. Не выдавать проверку probe за эту проверку.
+После пары не запускать новые серии автоматически; передать отчёты для выбора.
+Не добавлять сегодня loop detection, adaptive cap, новые модели и обученный
+оценщик без обнаруженного блокера. Точный план завершения — final-day.md.
 
 ## Режим работы
 
