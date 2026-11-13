@@ -39,11 +39,12 @@ read-only. A valid edit automatically runs the supplied tests, just like write.'
 
 
 class Agent:
-    def __init__(self, client, *, max_calls=6, max_tokens=1024, deadline=None, diagnostics=False, enable_edit=False, recover_actions=False):
+    def __init__(self, client, *, max_calls=6, max_tokens=1024, deadline=None, diagnostics=False, enable_edit=False, recover_actions=False, compact_data_context=False):
         self.client, self.max_calls, self.max_tokens, self.deadline = client, max_calls, max_tokens, deadline
         self.diagnostics = diagnostics
         self.enable_edit = enable_edit
         self.recover_actions = recover_actions
+        self.compact_data_context = compact_data_context
         self.last_trace = []
 
     def solve(self, task):
@@ -62,7 +63,7 @@ class Agent:
                 tests_before = file_hashes(workspace, tests_only=True)
                 system = SYSTEM + EDIT_INSTRUCTIONS if self.enable_edit and task.task_type == "coding" else SYSTEM
                 messages = [{"role": "system", "content": system}, {"role": "user", "content":
-                    f"Task type: {task.task_type}\nTask: {task.instruction}\nLocal files:\n" + initial_context(workspace)}]
+                    f"Task type: {task.task_type}\nTask: {task.instruction}\nLocal files:\n" + initial_context(workspace, compact_data=self.compact_data_context)}]
                 for step in range(self.max_calls):
                     if self.deadline and time.monotonic() >= self.deadline:
                         return Result("budget_stop", reason="run deadline reached")
@@ -132,7 +133,7 @@ class Agent:
                             publish_sources(task.workspace(), workspace, before)
                             trace["outcome"] = "tests_passed"
                             return Result("solved", "DONE")
-                    except (ValueError, KeyError, TypeError, OSError) as error:
+                    except (ValueError, KeyError, TypeError, OSError, SyntaxError) as error:
                         observation = "Tool/action error: " + type(error).__name__ + ": " + str(error)[:500] + ". Use the declared JSON action schema and workspace-relative paths."
                         if self.diagnostics:
                             trace["observation"] = observation

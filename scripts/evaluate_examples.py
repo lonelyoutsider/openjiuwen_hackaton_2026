@@ -33,6 +33,15 @@ def normalized_json(text):
                                 parse_int=Decimal,parse_constant=reject_constant))
 
 
+def reported_run_usage(stdout):
+    result=None
+    for line in (stdout or '').splitlines():
+        try:record=json.loads(line)
+        except ValueError:continue
+        if isinstance(record,dict) and isinstance(record.get('run_usage'),dict):result=record['run_usage']
+    return result
+
+
 def check_answer(folder, label):
     answer = folder / 'answer.txt'
     if not answer.is_file() or label['expected'] is None:
@@ -73,6 +82,7 @@ def main():
     parser.add_argument('--suite', choices=['public', 'validation', 'coding-edit', 'release', 'challenge'], default='public')
     parser.add_argument('--partition', choices=['all','smoke','calibration','confirmation'], default='all')
     parser.add_argument('--format', choices=['auto','plain','json'], default='auto', help='image-profile JSON mode override; plain simulates an unfamiliar judging proxy payload')
+    parser.add_argument('--compact-data-context',action='store_true')
     parser.add_argument('--release-defaults', action='store_true', help='invoke the image /app/run_agent.py with only tasks-dir and BUDGET env')
     parser.add_argument('--enable-edit', action='store_true')
     parser.add_argument('--recover-actions', action='store_true')
@@ -143,6 +153,7 @@ def main():
                 child_env.pop('ITS_IA_DIAGNOSTICS', None)
         started = time.monotonic()
         command = [sys.executable, str(entrypoint), '--tasks-dir', str(root)]
+        if args.compact_data_context:options += ['--compact-data-context']
         if not args.release_defaults:
             command += ['--engine', args.engine]
         run = subprocess.run([*command, *options], cwd='/app' if args.release_defaults else REPO,
@@ -186,6 +197,7 @@ def main():
                                  None if args.format == 'auto' else args.format == 'json')
                                  if args.release_defaults else args.json_mode),
                    'partition': args.partition, 'format_override': args.format,
+                   'compact_data_context':args.compact_data_context,
                    'release_defaults': args.release_defaults,
                    'max_calls_per_task': DEFAULT_CALLS if args.release_defaults else 4,
                    'elapsed_seconds': round(elapsed, 3),
@@ -205,6 +217,16 @@ def main():
                    'weighted_tokens': round(sum(r['weighted_tokens'] for r in rows), 4),
                    'usage_uncertain': any(r['usage_uncertain'] for r in rows),
                    'agent_exit_code': run.returncode}
+        if args.llm and args.quiet:
+            usage=reported_run_usage(run.stdout)
+            summary['usage_complete']=usage is not None
+            if usage is None:
+                summary['usage_uncertain']=True
+            else:
+                recorded=summary['weighted_tokens']
+                for key in ('llm_calls','input_tokens','output_tokens','weighted_tokens','usage_uncertain'):
+                    summary[key]=usage[key]
+                summary['unattributed_weighted_tokens']=round(summary['weighted_tokens']-recorded,4)
         summary['by_type'] = {
             kind: {'tasks': len(group), 'solvable':sum(r['known_solvable'] for r in group),
                    'correct':sum(r['correct'] for r in group),

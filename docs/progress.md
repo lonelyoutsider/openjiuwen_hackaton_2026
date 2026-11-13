@@ -452,3 +452,53 @@ commit8b2577d8502e39f335cd860e383fbd7b899052f2.
   сохранить до выбора изменения. Затем отдельный механизм/A-B при том же budget,
   расписание дополнительно при реальном дефиците, затем confirmation/regression.
   Платные вызовы в этом исследовании ассистентом не выполнялись.
+
+## 2026-11-13 — E03 аварийный baseline; SDK fix и контекстная A/B-пара
+
+- Пользователь передал benchmark.json/run.json и терминал. Source7b6bfd9,
+  calibration60/plain/BUDGET15000. Итог частичный:19/48 решаемых,109/195,
+ 49 вызовов,input80698/output2518,10587.8 учётного токена по records,
+ 331.688с,exit1. Все19 фактически начатых выполнимых правильны;29 не запускались,
+  включая все12 coding. Missing-data:12 без ответа, только5 явных верных отказов.
+  Нельзя считать0/12 coding ошибками модели или12 пропусков12 верными отказами.
+- Причина crash:openJiuwen [100101] workflow execution exceeded time limit of60
+  seconds на b091. Общий runtime/token budget не исчерпаны. Последний ответ
+  и task record были записаны до SDK error. Finish=stop во всех49 ответах,
+ 46 strict JSON,3 format errors, length не было. Разбор: e03-partial-result.md.
+- b091 (большой CSV) потратил5981.4,56.5% записанного расхода. Первый Python
+  уже прочитал весь файл и вычислил верное1877; затем4 проверки и ответ лишь
+  на6-м вызове. Input вырос8370→9729. Причина связи с preview ещё гипотеза.
+- Проверен установленный SDK0.1.19:default timeout60 в Config; Runner envs
+  объявлен, но не применяется. Исправление через публичную явную
+  create_workflow_session(envs={WORKFLOW_EXECUTE_TIMEOUT: remaining_deadline+30}).
+  Agent deadline3300/HTTP/tools/token ledger не отключаются. Общее исправление
+  нужно в сдаваемой версии после Docker-проверки, даже если compact не выиграет.
+- run_usage теперь печатается в finally. Evaluator читает общий ledger,
+  показывает unattributed cost и помечает incomplete usage при отсутствии ledger.
+  Отдельно исправлен SyntaxError в write как tool feedback; он найден аудитом,
+  не наблюдался в E03, поскольку coding не запускался.
+- Opt-in --compact-data-context:1024 символа для больших CSV/TSV/JSON/JSONL/TXT/MD
+  и явная отметка обрезки/доступности полных данных; маленькие файлы и .py
+  остаются прежними. Control сохраняет8000. Полные файлы не меняются.
+- Бесплатный replay записанных действий:19/19 ранее решённых остаются верными
+  с обоими контекстами. Для b091 суммарные JSON message bytes77003→29315 на
+  одинаковых6 scripted responses. Это не запуск Qwen и не62% экономии токенов;
+  проверена совместимость инструментов, не новое качество модели.
+- Проверки:108/108 тестов PASS без пропусков с Python3.12.14/openJiuwen0.1.19;
+  последние изменения pair-validation/reuse дополнительно прошли адресные тесты.
+  SDK timeout воспроизведён с сокращённым тестовым интервалом20мс, затем явная
+  конфигурация и повторное использование workflow пропускают следующую задачу.
+  CLI/fake HTTP при внешнем SDK default1мс не обрывает очередь. Проверены ledger
+  после injected failure, invalid-write feedback, markers/full-file access,
+  control/treatment flags, отсутствие секретов в report/args и stop при unknown usage.
+- Следующая одна пара: scripts/run_context_experiment.py --live, calibration60/plain,
+  по12000 (<=24000 суммарно),6 calls/cap1024; общие reliability fixes в обоих
+  вариантах, отличается только preview. Один frozen commit/image, без retries,
+  при error/unknown usage control второй arm не запускается. Результаты ещё неизвестны.
+- Нужно git pull и новый docker build -t its-ia:context-experiment .
+  Source fingerprint нового runtime:
+ 57afd096596df211adba8f9510b3bc2f8e2320eb80c27b1b6a0699267e7a9686.
+  Старый its-ia:release не подходит. Main72a942c пока не меняется, содержит SDK bug;
+  confirmation40 остаётся отложен. Сырые пользовательские отчёты не коммитятся.
+- Дополнительная бесплатная регрессия8 официальных через SDK после исправления:
+ 6/8,16/20,exit0,0 API — прежний результат deterministic части сохранён.

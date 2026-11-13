@@ -67,35 +67,17 @@ NaN, лишние ключи. Не используется LLM judge с доп�
 14. Совпадает ли source fingerprint реального image с выбранным runtime?
 15. Работает ли plain payload, который выберется для неизвестного proxy?
 
-## Первый запуск
+## Текущее продолжение после первого запуска
 
-Main72a942c не менять. Ветка experiment/challenge-benchmark содержит только
-benchmark/оценщик/документы; runtime fingerprint прежний. Можно использовать
-уже собранный its-ia:release, Docker Desktop должен работать.
+Первый calibration60/plain/BUDGET15000 выполнен:SDK timeout60с,exit1,
+19/48 решаемых,109/195 reward,10587.8 токена.19 начатых решены верно,
+29 ещё не запускались. Это аварийная частичная оценка. Подробности и новые
+команды: docs/experiments/e03-partial-result.md.
 
-```powershell
-git fetch origin
-git switch experiment/challenge-benchmark
-py scripts/run_challenge_benchmark.py --partition calibration --format plain --budget 15000 --live
-```
-
-Один прогон, потолок 15000 учётных токенов на всё, модель qwen3.8-27b-noreason,
-6 вызовов/задачу, запрошенный output cap1024 с существующей адаптацией.
-Ключ скрыт, без API по умолчанию/без --live, без автоматических повторов.
-Сначала preflight image fingerprint без сети; потом агент именно /app/run_agent.py
-с BUDGET env. Для plain добавляется --no-json-mode: моделируется формат запроса
-неизвестного proxy, но не его schema usage/HTTP-ошибки/маршрутизация.
-Сеть разработки остаётся NeuralDeep; ничего из external benchmark не загружается.
-
-Отчёт artifacts/challenge-*/benchmark.json, метаданные run.json. Отчёт включает
-source commit/image/fingerprint/профиль/usage/результаты по типам и ограниченные
-traces. Не коммитить сырые traces/ключи. Передать benchmark.json для анализа.
-При неизвестном списании/ошибке не запускать повтор самостоятельно.
-
-Дополнительные режимы не являются автоматическим планом расхода:
---partition smoke (28), calibration (60), confirmation (40), all (100);
---format plain/auto/json; --budget положительное число.
-Сначала выполнить только приведённую команду, confirmation оставить для отбора.
+Следующий шаг — одна baseline/compact пара, оба с исправленным SDK timeout,
+по12000 токенов на вариант. Требуется rebuild its-ia:context-experiment.
+Предыдущая рекомендация переиспользовать старый release image больше не подходит.
+Confirmation40 пока не запускать. Сырые отчёты остаются в ignored artifacts.
 
 ## Порядок улучшений
 

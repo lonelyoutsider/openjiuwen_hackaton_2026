@@ -9,31 +9,37 @@ experiment/challenge-benchmark, без изменений runtime/Dockerfile/loc
 benchmarks/challenge-v1.md и progress.md. Release51/51 описан в
 release-2026-11-13.md; это development-результат, не100-task hidden score.
 
-Следующий один live-запуск на Windows в текущем repo:
+E03 на7b6bfd9 завершился аварийно:SDK workflow timeout60с после b091,
+109/195 reward,19/48 решаемых. Все19 фактически начатых выполнимых правильны;
+29 не исследованы, все12 coding не запускались. Расход по records10587.8,
+49 вызовов,5 явных правильных отказов; не объявлять12 пропусков верными отказами.
+Разбор: docs/experiments/e03-partial-result.md.
 
-git fetch origin
-git switch experiment/challenge-benchmark
-py scripts/run_challenge_benchmark.py --partition calibration --format plain --budget 15000 --live
+SDK0.1.19 проверен по installed source: Runner envs игнорируется, нужна явная
+create_workflow_session с WORKFLOW_EXECUTE_TIMEOUT. Исправление использует
+остаток глобального deadline+30с cleanup. Сам deadline/HTTP/tools/BUDGET сохранены.
+run_usage печатается в finally; evaluator читает общий ledger даже после crash.
+SyntaxError от write теперь tool feedback, не crash (найдено аудитом, не в E03).
 
-Docker Desktop нужен. Image its-ia:release уже подходит: runtime fingerprint
-тот же ead9793f405a0565a7c1d01d89a4d8101c47998ba48ac752382e730beadb242e.
-Rebuild не требуется. Скрипт сначала проверит source match без API/сети.
+Следующий один запуск в ветке experiment/challenge-benchmark:
 
-Набор100:80 решаемых/20 missing;40 решаемых семейств по2 варианта,20 missing
-сценариев. Calibration60 (48 решаемых,195 reward), confirmation40 (32,118),
-непересекающиеся семейства. First run только calibration/plain и BUDGET15000.
-Plain явно задаёт --no-json-mode к реальному /app агенту, имитируя payload,
-который он выберет на незнакомом proxy. Не имитирует сам proxy/usage/HTTP.
-Передать artifacts/challenge-*/benchmark.json. Отложенные40 пока не запускать.
+git pull --ff-only
+docker build --progress=plain -t its-ia:context-experiment .
+py scripts/run_context_experiment.py --live
 
-После отчёта выбрать один механизм, проверить SDK/юниты, затем ограниченную
-A/B пару при одинаковом бюджете. Для расписания нужен действительно тесный
-бюджет. Не менять одновременно модель/инструменты/расписание и не приписывать
-результат одному фактору. Ни одна новая runtime-гипотеза ещё не измерена.
+Одна пара baseline/compact, calibration60/plain, по12000/максимум24000.
+Обе arms используют общие reliability fixes; отличаются только превью данных:
+8000 прежнее против1024+явный marker. Маленькие файлы и .py не меняются.
+Compact opt-in, --compact-data-context; не включать default до результата.
+При неизвестном usage/ошибке control treatment не запускается; нет retries.
+Нужен именно rebuild нового tag: старый release image содержит timeout bug.
+Передать artifacts/context-*/comparison.json,baseline.json,compact.json.
 
-Дедлайн13 ноября23:59 МСК; сохранить72a942c, если кандидат не доказал выигрыш.
-Пользователь написал оргкомитету о pending-приглашении. Последняя проверка
-promsoft=write, madrugado=none. Доступ/получение URL письмом не считать завершёнными.
+Confirmation40 отложен. Не менять одновременно очередь/модель/лимиты вызовов.
+Выбранный вариант далее проверить на confirmation/старых регрессиях и внедрить
+до13 ноября23:59 МСК. Даже если compact проиграет, SDK fix надо включить в сдачу
+после Docker-проверки.72a942c — резерв с известным60s дефектом, не финальный оптимум.
+Доступ жюри остаётся отдельным организационным вопросом, pending не равен доступу.
 
 ## Постановка и состояние
 

@@ -18,8 +18,8 @@ from scripts.challenge_set import build_challenge_set, PARTITIONS, VERSION
 from scripts.run_edit_experiment import snapshot_checkout
 
 
-def docker_command(image, snapshot, reports, partition, budget, response_format):
-    return ['docker','run','--rm','--read-only','--tmpfs','/tmp:rw,size=2g',
+def docker_command(image, snapshot, reports, partition, budget, response_format, *, compact_data_context=False):
+    command=['docker','run','--rm','--read-only','--tmpfs','/tmp:rw,size=2g',
         '--cpus','8','--memory','16g','--pids-limit','512','--cap-drop','ALL',
         '--security-opt','no-new-privileges','--workdir','/app','-e','HOME=/tmp',
         '-e','LLM_API_KEY','-e','LLM_BASE_URL',
@@ -29,6 +29,8 @@ def docker_command(image, snapshot, reports, partition, budget, response_format)
         '--suite','challenge','--partition',partition,'--format',response_format,
         '--release-defaults','--llm','--budget',str(budget),'--diagnostics','--quiet',
         '--report','/results/benchmark.json']
+    if compact_data_context:command.append('--compact-data-context')
+    return command
 
 
 def main(argv=None):
@@ -38,6 +40,7 @@ def main(argv=None):
     parser.add_argument('--budget',type=int,default=8000)
     parser.add_argument('--partition',choices=PARTITIONS,default='smoke')
     parser.add_argument('--format',choices=['plain','auto','json'],default='plain')
+    parser.add_argument('--compact-data-context',action='store_true')
     args=parser.parse_args(argv)
     if args.budget<=0:parser.error('budget must be positive')
     with tempfile.TemporaryDirectory() as temp:
@@ -68,10 +71,12 @@ def main(argv=None):
         provenance={'benchmark':VERSION,'source_commit':sha,'image_id':image,'source_fingerprint':expected,
                     'partition':args.partition,'format':args.format,'max_budget':args.budget,
                     'model':'qwen3.8-27b-noreason','automatic_retries':False,'status':'incomplete'}
+        provenance['compact_data_context']=args.compact_data_context
         run_path=reports/'run.json';run_path.write_text(json.dumps(provenance,indent=2),encoding='utf-8')
         print(f'Commit: {sha}; runtime fingerprint: {expected}; report: {reports/"benchmark.json"}',flush=True)
         try:
-            result=subprocess.run(docker_command(image,snapshot,reports,args.partition,args.budget,args.format),
+            result=subprocess.run(docker_command(image,snapshot,reports,args.partition,args.budget,args.format,
+                                  compact_data_context=args.compact_data_context),
                                   cwd=REPO,env=env,timeout=3550)
             report=reports/'benchmark.json'
             if not report.is_file():
