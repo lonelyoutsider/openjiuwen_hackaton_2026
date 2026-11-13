@@ -1,9 +1,11 @@
 """Actual openJiuwen execution; never a marker-only dependency."""
-from openjiuwen.core.workflow import Workflow, WorkflowComponent, Start, End
+from openjiuwen.core.workflow import Workflow, WorkflowComponent, Start, End, create_workflow_session
 from openjiuwen.core.runner import Runner
+from openjiuwen.core.session import WORKFLOW_EXECUTE_TIMEOUT
 from harness.execution import execute
 from harness.tasks import Task
 from pathlib import Path
+import time
 
 
 class SolveComponent(WorkflowComponent):
@@ -25,5 +27,12 @@ def build_workflow(agent=None):
     return flow
 
 
-async def run_task(flow, task):
-    await Runner.run_workflow(flow, {"directory": str(task.directory)}, session=task.task_id)
+async def run_task(flow, task, *, deadline=None):
+    # SDK0.1.19 defaults to 60s per workflow. Its Runner envs argument is not
+    # applied by this version, so pass a configured public Session explicitly.
+    # The agent/HTTP/tools retain their own limits and the global run deadline;
+    # this small grace lets an already-finishing component publish/clean up.
+    remaining = max(0.0, deadline-time.monotonic()) if deadline is not None else 3300.0
+    session = create_workflow_session(session_id=task.task_id,
+        envs={WORKFLOW_EXECUTE_TIMEOUT: remaining+30.0})
+    return await Runner.run_workflow(flow, {"directory": str(task.directory)}, session=session)

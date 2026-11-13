@@ -160,7 +160,7 @@ def run_python(workspace, code=None, *, tests=False, timeout=12):
     return {"returncode": status, "stdout": output, "stderr": errors, "tests_passed": passed}
 
 
-def initial_context(workspace, limit=24000):
+def initial_context(workspace, limit=24000, *, compact_data=False):
     parts, used = [], 0
     files = sorted(p for p in workspace.rglob("*") if p.is_file() and "__pycache__" not in p.parts)
     if len(files) > 1000:
@@ -171,12 +171,18 @@ def initial_context(workspace, limit=24000):
             raise ValueError("workspace contains symlinks")
         label = f"\nFILE {rel.as_posix()} ({path.stat().st_size} bytes)\n"
         text = ""
+        compact = compact_data and path.suffix.lower() in ('.csv','.tsv','.json','.jsonl','.txt','.md')
         if used < limit:
             try:
                 with path.open(encoding="utf-8") as source:
-                    text = source.read(min(8000, limit - used))
+                    allowed = min(1024 if compact else 8000, limit-used)
+                    text = source.read(allowed+1 if compact else allowed)
+                    if compact and len(text)>allowed:
+                        text = text[:allowed] + '\n[PREVIEW TRUNCATED; the full file remains available. Use Python to process the full data. Absence from this preview is not missing data.]\n'
             except (UnicodeError, OSError):
                 text = "[binary or unreadable; use local tools]"
+        elif compact:
+            text = '[CONTENTS OMITTED from prompt; full file available through local tools.]'
         parts.append(label + text)
         used += len(text)
     return "".join(parts)

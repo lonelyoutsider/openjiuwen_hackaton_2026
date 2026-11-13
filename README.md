@@ -28,6 +28,32 @@
 Перед запуском оценщик удаляет expected из копии task.json. Решатель получает
 только разрешённые поля. expected читает исключительно локальный оценщик.
 
+## Текущий кандидат13 ноября
+
+E04 calibration60/plain:baseline130/195 и24/48 правильных,
+compact165/195 и33/48 при11691.7/11651.2 учётного токена. Оба exit0,
+usage complete,ошибка SDK timeout не повторилась. Это одна development-пара.
+[Разбор](docs/experiments/e04-context-result.md).
+
+Общие исправления SDK/учёта/write интегрируются в main через PR8.
+Compact пока opt-in. Следующий этап — confirmation40 и regression21 без
+нового изменения runtime. Уже собранный its-ia:context-experiment подходит:
+fingerprint57afd096596df211adba8f9510b3bc2f8e2320eb80c27b1b6a0699267e7a9686.
+
+```powershell
+git pull --ff-only
+py scripts/run_candidate_validation.py --live
+```
+
+Одна серия:confirmation<=12000,regression<=5000,общий потолок17000;
+plain/compact,6 calls/cap1024,без retries. Ключ скрыт. Передать validation.json,
+confirmation.json,regression.json из artifacts/candidate-*.
+Default compact ещё не включён; после проверки потребуется выбранный профиль
+в обычном CLI. Main72a942c — историческая версия с выявленным timeout defect,
+а не рекомендуемый финальный checkpoint. Новые live-результаты пока неизвестны.
+
+[Исследование](docs/research-2026-11-13.md),[бенчмарк](benchmarks/challenge-v1.md).
+
 ## Проверенный релиз13 ноября
 
 **19/19 выполнимых задач,51/51 reward,2/2 корректных отказа,24 вызова,

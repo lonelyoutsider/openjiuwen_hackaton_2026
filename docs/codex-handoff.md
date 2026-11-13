@@ -1,20 +1,44 @@
 # Контекст для VS Code / Codex,13 ноября2026
 
-Repo lonelyoutsider/openjiuwen_hackaton_2026. Сдаваемая ветка — main,
-интеграция проверенного кандидата — PR7. Прочитать AGENTS.md, requirements.md,
-release-2026-11-13.md, final-day.md и progress.md.
+Repo lonelyoutsider/openjiuwen_hackaton_2026,experiment/challenge-benchmark.
+E04 на26f3d05 завершён:baseline130/195,24/48,11691.7 токена;compact165/195,
+33/48,11651.2. Оба exit0/usage complete/unattributed0. Все24 baseline-успеха
+сохранены,+9 новых. Это одна calibration-пара, не hidden score.
+Разбор:experiments/e04-context-result.md. Основные docs:AGENTS.md,
+requirements.md,plan.md,progress.md,research-2026-11-13.md.
 
-Release-check наc55c490 завершён:19/19 выполнимых,51/51 reward,2 правильных
-отказа,3360.8 токена,24 вызова,90.558с,exit0,usage известен,image1.36GB.
-Source fingerprint ead9793f405a0565a7c1d01d89a4d8101c47998ba48ac752382e730beadb242e.
-Все7 coding-кандидатов повторно проверены offline:PASS. Runtime после этого
-прогона не менять без конкретной новой причины и её валидации. Остались
-организационные действия и синхронизация локальной main, не новая API-серия.
+SDK60s timeout исправлен через явную Session,finally ledger и SyntaxError
+feedback проверены SDK и реальным Docker-прогоном. Эти общие исправления
+интегрируются main через PR8.72a942c — исторический резерв с известным багом.
+Compact остаётся opt-in до выбора обычных defaults; не выдавать победу opt-in
+за включение его в запуск жюри.
 
-Дедлайн13 ноября23:59 МСК. Пользователь отправил письмо с просьбой принять
-приглашение в repo. Наличие ссылки в тексте и получение оргкомитетом не проверены.
-URL нужен на openjiuwen_org@nsu.ru. promsoft=write, madrugado=none по GitHub
-после прогона. Не считать pending принятым. Утром14-го проверить #teams.
+Следующий один запуск (runtime не меняется,image уже есть):
+
+git pull --ff-only
+py scripts/run_candidate_validation.py --live
+
+Одна серия:confirmation40/plain/compact BUDGET12000,затем regression21 BUDGET5000,
+независимые бюджеты этапов,максимум17000 суммарно.6 calls/cap1024,Qwen3.8-noreason,
+без retries. При error/unknown usage второй этап не запускается. Источник и
+image заморожены,ключ только в env. Fingerprint прежний
+57afd096596df211adba8f9510b3bc2f8e2320eb80c27b1b6a0699267e7a9686.
+Передать artifacts/candidate-*/validation.json,confirmation.json,regression.json.
+
+После отчёта:отдельно оценить32 отложенных решаемых и19 старых регрессий.
+При принятии включить compact в стандартный CLI,сохранить явное отключение
+для контрольных запусков и перепроверить путь без feature flag. Не менять
+сейчас очередь/модель/форматные циклы до confirmation. Не требуется rebuild
+для нового runner:ни один файл runtime/Dockerfile/lock после26f3d05 не меняется.
+
+Нерешённые calibration:b075 ложный отказ после5 одинаковых malformed JSON,
+b040 неверный ответ после5 пустых content,b064 вычислен18.0,но финальный
+answer не помещается в резерв. Прочие12 решаемых compact вообще не запускал.
+Эти факты — кандидаты следующего исследования,не новые исправления.
+
+Дедлайн13 ноября23:59 МСК. Доступ madrugado по последней проверке всё ещё none;
+pending не равен доступу. Отправленное пользователем письмо зафиксировано,
+получение URL оргкомитетом независимо не подтверждено.
 
 ## Постановка и состояние
 
@@ -45,18 +69,9 @@ JSON auto только HTTPS api.neuraldeep.ru:443; неизвестный ад�
 Boolean override-флаги доступны; A/B оценщик явно задаёт оба режима, чтобы
 новые defaults не испортили контрольный вариант.
 
-Следующий локальный шаг после merge PR7: git fetch origin; git switch main;
-git pull --ff-only; git log -1 --oneline; git status --short. Уже собранный
-image соответствует проверенному runtime; документирование результата его
-не меняет. API и Docker build повторять не требуется без новой причины.
-
-Release-check выполнен: public8 + coding3 + свежие10,19/19 и51/51.
-Команда агента была /app/run_agent.py --tasks-dir с BUDGET env, не /repo;
-read-only root, /tmp2GB, CPU8/RAM16GB. ITS_IA_DIAGNOSTICS включал лишь лог.
-Это dev-тест с JSON/NeuralDeep, не финальный proxy или скрытые отборочные2 задачи.
-Сырые traces остаются локальными; публичная сводка в release-2026-11-13.md.
-Не повторять probe/E02/release-check автоматически. Не добавлять новые
-модели/swarm/обучение/переписывание очереди в зафиксированную версию.
+Release-check уже выполнен:19/19,51/51,3360.8 токена,24 вызова,image1.36GB.
+Повторять его до нового обоснованного кандидата не требуется. Теперь baseline
+проверяем на новом calibration60/plain. Архивные probe/E02 не повторять.
 
 ## Совместная работа
 

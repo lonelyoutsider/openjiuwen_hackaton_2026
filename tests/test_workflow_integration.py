@@ -31,7 +31,10 @@ class WorkflowIntegrationTests(unittest.TestCase):
     def test_judge_style_small_budget_adapts_output_allowance(self):
         self._run_workflow(enable_edit=True, recover_actions=True, judge_style=True, budget=1000)
 
-    def _run_workflow(self, enable_edit, recover_actions=False, json_mode=False, judge_style=False, budget=5000):
+    def test_judge_style_command_overrides_short_sdk_default(self):
+        self._run_workflow(enable_edit=True,recover_actions=True,judge_style=True,sdk_timeout='0.001')
+
+    def _run_workflow(self, enable_edit, recover_actions=False, json_mode=False, judge_style=False, budget=5000, sdk_timeout=None):
         output_caps = []
         class Provider(http.server.BaseHTTPRequestHandler):
             def do_POST(self):
@@ -80,6 +83,7 @@ class WorkflowIntegrationTests(unittest.TestCase):
             env = os.environ.copy()
             env.update(LLM_BASE_URL=f"http://127.0.0.1:{server.server_port}/v1", LLM_API_KEY="fake-integration-key")
             env['BUDGET'] = str(budget)
+            if sdk_timeout is not None:env['WORKFLOW_EXECUTE_TIMEOUT']=sdk_timeout
             repo = Path(__file__).resolve().parents[1]
             try:
                 flags = [] if judge_style else ["--budget", "5000", "--diagnostics",

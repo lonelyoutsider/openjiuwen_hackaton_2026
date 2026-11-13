@@ -78,6 +78,16 @@ class LedgerTests(unittest.TestCase):
 
 
 class AgentTests(unittest.TestCase):
+    def test_invalid_write_is_feedback_then_corrected_source_can_pass(self):
+        with tempfile.TemporaryDirectory() as temp:
+            task=task_fixture(Path(temp))
+            client=FakeClient([{'action':'write','path':'mylib.py','content':'def broken(:'},
+                               {'action':'write','path':'mylib.py','content':'def add(a,b):\n    return a+b\n'}])
+            agent=Agent(client,diagnostics=True)
+            result=agent.solve(task)
+            self.assertEqual(result.status,'solved')
+            self.assertIn('SyntaxError',agent.last_trace[0]['observation'])
+
     def test_diagnostics_include_action_and_action_error_without_system_prompt(self):
         with tempfile.TemporaryDirectory() as temp:
             task = task_fixture(Path(temp))

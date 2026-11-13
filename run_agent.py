@@ -20,6 +20,7 @@ async def main():
     parser.add_argument("--enable-edit", action=argparse.BooleanOptionalAction, default=True, help="exact text replacement in coding sources")
     parser.add_argument("--recover-actions", action=argparse.BooleanOptionalAction, default=True, help="accept one complete terminal JSON action after commentary")
     parser.add_argument("--json-mode", action=argparse.BooleanOptionalAction, default=None, help="provider JSON format; auto only for the verified NeuralDeep HTTPS endpoint")
+    parser.add_argument("--compact-data-context", action="store_true", help="experimental short, explicitly marked previews of data files")
     parser.add_argument("--max-calls-per-task", type=int, default=DEFAULT_CALLS)
     parser.add_argument("--max-output-tokens", type=int, default=1024)
     parser.add_argument("--time-limit", type=int, default=3300)
@@ -44,7 +45,7 @@ async def main():
     pending = []
     for task in tasks:
         if args.engine == "openjiuwen":
-            await run_task(flow, task)
+            await run_task(flow, task, deadline=deadline)
         else:
             execute(task)
         record = json.loads((task.directory / "its_ia_result.json").read_text(encoding="utf-8"))
@@ -60,21 +61,25 @@ async def main():
                         json_mode=resolve_json_mode(base_url, args.json_mode))
         agent = Agent(client, max_calls=args.max_calls_per_task,
                       max_tokens=args.max_output_tokens, deadline=deadline, diagnostics=args.diagnostics,
-                      enable_edit=args.enable_edit, recover_actions=args.recover_actions)
+                      enable_edit=args.enable_edit, recover_actions=args.recover_actions,
+                      compact_data_context=args.compact_data_context)
         if args.engine == "openjiuwen":
             flow = build_workflow(agent)
         # Initial cost estimates are explicit heuristics, not trained predictions.
         cost = {"coding": 3000, "data_analysis": 1500, "math": 1000, "search": 1000}
         pending.sort(key=lambda t: (-t.reward / cost.get(t.task_type, 2000), t.task_id))
-        for task in pending:
-            if time.monotonic() >= deadline or client.stopped:
-                break
-            if args.engine == "openjiuwen":
-                await run_task(flow, task)
-            else:
-                execute(task, agent)
-            print((task.directory / "its_ia_result.json").read_text(encoding="utf-8").strip(), flush=True)
-        print(json.dumps({"run_usage": client.snapshot()}), flush=True)
+        try:
+            for task in pending:
+                if time.monotonic() >= deadline or client.stopped:
+                    break
+                if args.engine == "openjiuwen":
+                    await run_task(flow, task, deadline=deadline)
+                else:
+                    execute(task, agent)
+                print((task.directory / "its_ia_result.json").read_text(encoding="utf-8").strip(), flush=True)
+        finally:
+            # An SDK/tool exception must not hide charges already in the ledger.
+            print(json.dumps({"run_usage": client.snapshot()}), flush=True)
 
 
 if __name__ == "__main__":

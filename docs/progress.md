@@ -398,3 +398,149 @@ commit8b2577d8502e39f335cd860e383fbd7b899052f2.
   docs/release-2026-11-13.md; обновлены README/план/handoff/статус. Только документы,
   без изменений runtime/Dockerfile/lock. Проверенная версия переносится PR7 в main.
   Новая платная серия и повтор84 тестов для документирования не требуются.
+
+## 2026-11-13 — по запросу команды оптимизация продолжается; challenge-v1
+
+- Пользователь оспорил преждевременное «финальный commit» и попросил продолжить
+  исследование/оптимизацию до дедлайна.72a942c сохраняется как проверенная
+  резервная main; это не доказанный оптимум и не запрет проверять новые идеи.
+- Проведён новый целевой web-поиск и чтение первичных источников: Google
+  budget-aware-agent/Budget Tracker/BATS, budget-matched web-agent study,
+  mini-SWE-agent/Agentless, observation masking/JetBrains, TALE, HarnessFlow,
+  InfiAgent-DABench, EvalPlus, MuSiQue, SQuAD2, GAIA. Первичные abstracts
+  EcoAgent-Bench/openJiuwen найдены, прямой fulltext недоступен. Не заявляем
+  полный аудит всех работ/чужих solve rate. Прочитаны выборочные исходники
+  Budget Tracker и mini-SWE-agent. Итоги: docs/research-2026-11-13.md.
+- Аудит выявил неоткалиброванные type-cost3000/1500/1000, одинаковый call cap,
+  отсутствие remaining budget в модельном контексте, silent truncation previews,
+  отсутствие state-aware repeats. Это гипотезы, а не измеренные улучшения.
+  В release средняя стоимость LLM-решаемых: coding266.7(n7),math181.1(n2),
+  data222.0(n2),search252.7(n2). Малые группы не заменяют корректной калибровки.
+- Написан challenge-v1:100 задач,25 каждого типа,80 решаемых/20 missing-data,
+ 313 доступного reward.40 решаемых семейств по2 разных варианта плюс20
+  missing сценариев. Это60 групп, не100 независимых templates. Calibration60:
+ 48 решаемых/195 reward; confirmation40:32/118. Семейства между ними не
+  пересекаются; smoke28 входит в calibration. Новые вопросы/код/данные авторские,
+  внешние datasets/решения не скопированы; новые зависимости не добавлены.
+- Включены длинные файлы за preview/read window, multi-hop/отвлекающие документы,
+  join/dedup/CSV quoting/BOM/UTC/пропуски, заданный JSON output, неявная нехватка
+  данных, несколько coding-исходников, Unicode/generators/cycles/LRU. Expected,
+  reference_sources, private checks, family/partition не попадают в task.json.
+-20/20 reference coding-патчей проходят независимые проверки;20/20 исходных
+  mutants отвергаются, в том числе при прохождении слабых видимых тестов.
+  Числовые ответы дополнительно сверены независимыми ручными расчётами.
+  JSON checker сравнивает структуру/типы, отвергает duplicates/NaN/bool вместо числа.
+- scripts/run_challenge_benchmark.py: один запуск с заданным budget/partition/format,
+  dry-run по умолчанию. Проверяет совпадение реального image с runtime до ключа,
+  запускает /app agent, а оценщик из read-only snapshot. Plain моделирует
+  payload неизвестного proxy через --no-json-mode, не его usage/HTTP-реализацию.
+  При missing report/неизвестном usage/превышении бюджета — ошибка без retry.
+  Run/report сохраняют commit/image/fingerprint/профиль; ключа в args/report нет.
+- Python3.12.14 + закреплённый openJiuwen0.1.19:96/96 тестов PASS без пропусков.
+  Проверены partitions/семейства/детерминизм, gold/mutants, защитные границы
+  оценщика, stale image/dry-run/provenance/неполный отчёт. Это не96 Qwen-задач.
+- Бесплатный проход всех100 через настоящий SDK без LLM:exit0,0 API,
+ 0/80 решаемых (новые формулировки не покрыты узкими парсерами), все остальные
+  unsupported.20 отсутствующих answer.txt не являются20 явными правильными
+  отказами; explicit abstentions=0. Live качество challenge ещё неизвестно.
+- Runtime/Dockerfile/requirements.lock/main не меняются. Fingerprint по-прежнему
+  ead9793f405a0565a7c1d01d89a4d8101c47998ba48ac752382e730beadb242e;
+  можно использовать уже проверенный its-ia:release без rebuild.
+- Следующий только один live baseline: calibration60/plain/BUDGET15000;
+  py scripts/run_challenge_benchmark.py --partition calibration --format plain --budget 15000 --live
+  Ключ и запуск остаются на Windows. Отчёт benchmark.json; confirmation40
+  сохранить до выбора изменения. Затем отдельный механизм/A-B при том же budget,
+  расписание дополнительно при реальном дефиците, затем confirmation/regression.
+  Платные вызовы в этом исследовании ассистентом не выполнялись.
+
+## 2026-11-13 — E03 аварийный baseline; SDK fix и контекстная A/B-пара
+
+- Пользователь передал benchmark.json/run.json и терминал. Source7b6bfd9,
+  calibration60/plain/BUDGET15000. Итог частичный:19/48 решаемых,109/195,
+ 49 вызовов,input80698/output2518,10587.8 учётного токена по records,
+ 331.688с,exit1. Все19 фактически начатых выполнимых правильны;29 не запускались,
+  включая все12 coding. Missing-data:12 без ответа, только5 явных верных отказов.
+  Нельзя считать0/12 coding ошибками модели или12 пропусков12 верными отказами.
+- Причина crash:openJiuwen [100101] workflow execution exceeded time limit of60
+  seconds на b091. Общий runtime/token budget не исчерпаны. Последний ответ
+  и task record были записаны до SDK error. Finish=stop во всех49 ответах,
+ 46 strict JSON,3 format errors, length не было. Разбор: e03-partial-result.md.
+- b091 (большой CSV) потратил5981.4,56.5% записанного расхода. Первый Python
+  уже прочитал весь файл и вычислил верное1877; затем4 проверки и ответ лишь
+  на6-м вызове. Input вырос8370→9729. Причина связи с preview ещё гипотеза.
+- Проверен установленный SDK0.1.19:default timeout60 в Config; Runner envs
+  объявлен, но не применяется. Исправление через публичную явную
+  create_workflow_session(envs={WORKFLOW_EXECUTE_TIMEOUT: remaining_deadline+30}).
+  Agent deadline3300/HTTP/tools/token ledger не отключаются. Общее исправление
+  нужно в сдаваемой версии после Docker-проверки, даже если compact не выиграет.
+- run_usage теперь печатается в finally. Evaluator читает общий ledger,
+  показывает unattributed cost и помечает incomplete usage при отсутствии ledger.
+  Отдельно исправлен SyntaxError в write как tool feedback; он найден аудитом,
+  не наблюдался в E03, поскольку coding не запускался.
+- Opt-in --compact-data-context:1024 символа для больших CSV/TSV/JSON/JSONL/TXT/MD
+  и явная отметка обрезки/доступности полных данных; маленькие файлы и .py
+  остаются прежними. Control сохраняет8000. Полные файлы не меняются.
+- Бесплатный replay записанных действий:19/19 ранее решённых остаются верными
+  с обоими контекстами. Для b091 суммарные JSON message bytes77003→29315 на
+  одинаковых6 scripted responses. Это не запуск Qwen и не62% экономии токенов;
+  проверена совместимость инструментов, не новое качество модели.
+- Проверки:108/108 тестов PASS без пропусков с Python3.12.14/openJiuwen0.1.19;
+  последние изменения pair-validation/reuse дополнительно прошли адресные тесты.
+  SDK timeout воспроизведён с сокращённым тестовым интервалом20мс, затем явная
+  конфигурация и повторное использование workflow пропускают следующую задачу.
+  CLI/fake HTTP при внешнем SDK default1мс не обрывает очередь. Проверены ledger
+  после injected failure, invalid-write feedback, markers/full-file access,
+  control/treatment flags, отсутствие секретов в report/args и stop при unknown usage.
+- Следующая одна пара: scripts/run_context_experiment.py --live, calibration60/plain,
+  по12000 (<=24000 суммарно),6 calls/cap1024; общие reliability fixes в обоих
+  вариантах, отличается только preview. Один frozen commit/image, без retries,
+  при error/unknown usage control второй arm не запускается. Результаты ещё неизвестны.
+- Нужно git pull и новый docker build -t its-ia:context-experiment .
+  Source fingerprint нового runtime:
+ 57afd096596df211adba8f9510b3bc2f8e2320eb80c27b1b6a0699267e7a9686.
+  Старый its-ia:release не подходит. Main72a942c пока не меняется, содержит SDK bug;
+  confirmation40 остаётся отложен. Сырые пользовательские отчёты не коммитятся.
+- Дополнительная бесплатная регрессия8 официальных через SDK после исправления:
+ 6/8,16/20,exit0,0 API — прежний результат deterministic части сохранён.
+
+## 2026-11-13 — E04:compact165/195 против130/195,SDK fix подтверждён в Docker
+
+- Источники:comparison(3).json,baseline(1).json,compact.json и терминал пользователя.
+  Source26f3d05,image sha256:3eeed1a0ced84df32d66920a484b89cdf795dc2829e1955c203f3a2146b2027d,
+  fingerprint57afd096596df211adba8f9510b3bc2f8e2320eb80c27b1b6a0699267e7a9686.
+  Calibration60/plain,по12000,6 calls/cap1024,одинаковые общие reliability fixes.
+- Baseline:24/48 правильных,130/195 reward,60 вызовов,input84137/output3278,
+ 11691.7 токена,203.974с. Compact:33/48,165/195,93 вызова,input63442/output5307,
+ 11651.2 токена,243.917с. Оба exit0,usage_complete=true,uncertain=false,
+  unattributed0. Пара completed,23342.9 учётного токена,без повторов.
+-+35 reward(+26.9%),+9 решений при почти равном расходе. Все24 baseline-успеха
+  сохранены. Все9 дополнительных задач baseline вообще не запрашивал у LLM.
+  Скорость не улучшилась:compact решил больше задач,сделал больше вызовов.
+  Это одна calibration-пара,не hidden score/статистическая гарантия.
+- По типам reward baseline→compact:coding7→34,data43→43,math39→41,search41→47.
+  Успешные coding-кандидаты обеих arms повторно проверены offline:1+6 PASS.
+  Суммы токенов/calls по задачам совпали с глобальным ledger.
+- b091 сохранил правильность6 calls,стоимость5766.4→1655.8,но лишние проверки
+  результата не исчезли. b075:5 одинаковых незакрытых JSON,затем ложный отказ;
+  b040:5 пустых content,затем неверное9 вместо8; b064 вычислил18.0,но не смог
+  зарезервировать последний answer. В compact12 решаемых вообще не запрашивались.
+  Новые механизмы для этих проблем пока не включаем перед confirmation.
+- В baseline6/60 format failures,в compact21/93;empty content6/10;все153 finish=stop.
+  Не все отличия на неизменённых inputs можно причинно приписать previews.
+  Разбор:docs/experiments/e04-context-result.md. Сырые traces не коммитятся.
+- Подтверждённый reliability fix готов к интеграции main через PR8;compact
+  пока opt-in. Обычный CLI ещё не включает выбранный compact профиль.
+  Прежняя72a942c содержит известный SDK bug и больше не рекомендуемый финал.
+- Подготовлен один run_candidate_validation.py --live:confirmation40/plain/compact
+  <=12000,затем regression21/plain/compact<=5000,независимые бюджеты этапов,
+  общий потолок17000. Тот же frozen image/source,без retries. При runtime/usage
+  error второй этап не запускается;низкий score не выдаётся за transport error.
+  Отчёты validation.json,confirmation.json,regression.json;новая серия ещё не выполнена.
+- Runtime/Dockerfile/lock не меняются,существующий context-experiment image
+  подходит без rebuild. Изменены только tools проверки/документы.112/112 тестов
+  PASS без пропусков с Python3.12.14/openJiuwen0.1.19;новые проверки:dry-run,
+  stale image до ключа,правильные suites/partitions/бюджеты,протокол2 этапов,
+  остановка по unknown usage,нет ключа в reports/args. Это не112 Qwen-задач.
+- После confirmation:выбор defaults,проверка стандартного запуска без feature
+  flag,проверенный checkpoint main до23:59 МСК. Дальнейшие format-reset/feedback/
+  scheduling требуют отдельной оценки. Доступ madrugado проверен снова:none.
