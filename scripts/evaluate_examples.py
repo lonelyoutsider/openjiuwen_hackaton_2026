@@ -17,6 +17,22 @@ from harness.tools import run_python
 from harness.profile import DEFAULT_MODEL, DEFAULT_CALLS, resolve_json_mode
 
 
+def normalized_json(text):
+    def object_pairs(pairs):
+        result={}
+        for key,value in pairs:
+            if key in result:raise ValueError('duplicate JSON key')
+            result[key]=value
+        return result
+    def reject_constant(value):raise ValueError('nonfinite JSON number')
+    def normalize(value):
+        if isinstance(value,dict):return ('object',tuple(sorted((k,normalize(v)) for k,v in value.items())))
+        if isinstance(value,list):return ('array',tuple(normalize(v) for v in value))
+        return (type(value).__name__,value)
+    return normalize(json.loads(text,object_pairs_hook=object_pairs,parse_float=Decimal,
+                                parse_int=Decimal,parse_constant=reject_constant))
+
+
 def check_answer(folder, label):
     answer = folder / 'answer.txt'
     if not answer.is_file() or label['expected'] is None:
@@ -35,6 +51,9 @@ def check_answer(folder, label):
             return False
     if label['check'] == 'exact_str':
         return text == label['expected']
+    if label['check'] == 'exact_json':
+        try:return normalized_json(text)==normalized_json(label['expected'])
+        except (ValueError,TypeError):return False
     if label['check'] == 'unittest' and text == 'DONE':
         work = (folder / 'workspace').resolve()
         public = run_python(work, tests=True)
@@ -51,7 +70,9 @@ def main():
     parser.add_argument('--engine', choices=['openjiuwen', 'stdlib'], default='openjiuwen')
     parser.add_argument('--llm', action='store_true')
     parser.add_argument('--budget', type=int, default=3000)
-    parser.add_argument('--suite', choices=['public', 'validation', 'coding-edit', 'release'], default='public')
+    parser.add_argument('--suite', choices=['public', 'validation', 'coding-edit', 'release', 'challenge'], default='public')
+    parser.add_argument('--partition', choices=['all','smoke','calibration','confirmation'], default='all')
+    parser.add_argument('--format', choices=['auto','plain','json'], default='auto', help='image-profile JSON mode override; plain simulates an unfamiliar judging proxy payload')
     parser.add_argument('--release-defaults', action='store_true', help='invoke the image /app/run_agent.py with only tasks-dir and BUDGET env')
     parser.add_argument('--enable-edit', action='store_true')
     parser.add_argument('--recover-actions', action='store_true')
@@ -65,6 +86,10 @@ def main():
         parser.error('budget must be positive')
     if args.release_defaults and (not args.llm or args.engine != 'openjiuwen'):
         parser.error('release-defaults requires explicit --llm and openjiuwen')
+    if args.partition != 'all' and args.suite != 'challenge':
+        parser.error('partitions are supported only by challenge')
+    if args.format != 'auto' and not args.release_defaults:
+        parser.error('format override requires release-defaults')
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary) / 'tasks'
         if args.suite == 'public':
@@ -77,9 +102,12 @@ def main():
         elif args.suite == 'coding-edit':
             from scripts.coding_edit_set import build_coding_edit_set
             labels = build_coding_edit_set(root)
-        else:
+        elif args.suite == 'release':
             from scripts.release_set import build_release_set
             labels = build_release_set(root)
+        else:
+            from scripts.challenge_set import build_challenge_set
+            labels = build_challenge_set(root, args.partition)
         if args.only:
             selected = set(args.only.split(','))
             unknown = selected - set(labels)
@@ -106,6 +134,8 @@ def main():
             if not entrypoint.is_file():
                 parser.error('release-defaults must run inside the built Docker image')
             options = []
+            if args.format != 'auto':
+                options += ['--json-mode' if args.format == 'json' else '--no-json-mode']
             child_env['BUDGET'] = str(args.budget)
             if args.diagnostics:
                 child_env['ITS_IA_DIAGNOSTICS'] = '1'
@@ -116,7 +146,7 @@ def main():
         if not args.release_defaults:
             command += ['--engine', args.engine]
         run = subprocess.run([*command, *options], cwd='/app' if args.release_defaults else REPO,
-                             env=child_env, timeout=900 if args.release_defaults else 360,
+                             env=child_env, timeout=3500 if args.release_defaults else 360,
                              capture_output=args.quiet, text=True)
         elapsed = time.monotonic() - started
         if args.quiet and run.returncode:
@@ -138,6 +168,8 @@ def main():
                    'llm_calls': record.get('llm_calls', 0), 'weighted_tokens': record.get('weighted_tokens', 0),
                    'input_tokens': record.get('input_tokens', 0), 'output_tokens': record.get('output_tokens', 0),
                    'usage_uncertain': record.get('usage_uncertain', False)}
+            for key in ('validation_group','family','variant','partition','stress'):
+                if key in label:row[key]=label[key]
             if args.diagnostics:
                 row['diagnostics'] = record.get('diagnostics', [])
             if label['task_type'] == 'coding':
@@ -150,7 +182,10 @@ def main():
         summary = {'dataset': args.suite + '; not hidden score', 'engine': args.engine,
                    'enable_edit': True if args.release_defaults else args.enable_edit,
                    'recover_actions': True if args.release_defaults else args.recover_actions,
-                   'json_mode': resolve_json_mode(os.environ.get('LLM_BASE_URL', 'https://api.neuraldeep.ru/v1')) if args.release_defaults else args.json_mode,
+                   'json_mode': (resolve_json_mode(os.environ.get('LLM_BASE_URL', 'https://api.neuraldeep.ru/v1'),
+                                 None if args.format == 'auto' else args.format == 'json')
+                                 if args.release_defaults else args.json_mode),
+                   'partition': args.partition, 'format_override': args.format,
                    'release_defaults': args.release_defaults,
                    'max_calls_per_task': DEFAULT_CALLS if args.release_defaults else 4,
                    'elapsed_seconds': round(elapsed, 3),
@@ -162,6 +197,7 @@ def main():
                    'available_reward': sum(r['reward'] for r in rows if r['known_solvable']),
                    'missing_data_unanswered': sum(not r['known_solvable'] and r['answer'] is None for r in rows),
                    'missing_data_answered': sum(not r['known_solvable'] and r['answer'] is not None for r in rows),
+                   'missing_data_explicit_abstentions': sum(not r['known_solvable'] and r['status'] == 'insufficient_data' for r in rows),
                    'false_abstentions': sum(r['known_solvable'] and r['status'] == 'insufficient_data' for r in rows),
                    'llm_calls': sum(r['llm_calls'] for r in rows),
                    'input_tokens': sum(r['input_tokens'] for r in rows),
@@ -169,6 +205,14 @@ def main():
                    'weighted_tokens': round(sum(r['weighted_tokens'] for r in rows), 4),
                    'usage_uncertain': any(r['usage_uncertain'] for r in rows),
                    'agent_exit_code': run.returncode}
+        summary['by_type'] = {
+            kind: {'tasks': len(group), 'solvable':sum(r['known_solvable'] for r in group),
+                   'correct':sum(r['correct'] for r in group),
+                   'reward':sum(r['reward'] for r in group if r['correct']),
+                   'available_reward':sum(r['reward'] for r in group if r['known_solvable']),
+                   'weighted_tokens':round(sum(r['weighted_tokens'] for r in group),1)}
+            for kind in sorted({r['task_type'] for r in rows})
+            for group in [[r for r in rows if r['task_type']==kind]]}
         print(json.dumps(summary, ensure_ascii=False), flush=True)
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)

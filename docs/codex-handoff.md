@@ -1,20 +1,39 @@
 # Контекст для VS Code / Codex,13 ноября2026
 
-Repo lonelyoutsider/openjiuwen_hackaton_2026. Сдаваемая ветка — main,
-интеграция проверенного кандидата — PR7. Прочитать AGENTS.md, requirements.md,
-release-2026-11-13.md, final-day.md и progress.md.
+Repo lonelyoutsider/openjiuwen_hackaton_2026. Main72a942c сохраняется как
+проверенная резервная версия. Пользователь попросил продолжить оптимизацию;
+прежнее «финальная/freeze» не означает остановку исследования. Новая ветка
+experiment/challenge-benchmark, без изменений runtime/Dockerfile/lock.
 
-Release-check наc55c490 завершён:19/19 выполнимых,51/51 reward,2 правильных
-отказа,3360.8 токена,24 вызова,90.558с,exit0,usage известен,image1.36GB.
-Source fingerprint ead9793f405a0565a7c1d01d89a4d8101c47998ba48ac752382e730beadb242e.
-Все7 coding-кандидатов повторно проверены offline:PASS. Runtime после этого
-прогона не менять без конкретной новой причины и её валидации. Остались
-организационные действия и синхронизация локальной main, не новая API-серия.
+Прочитать AGENTS.md, requirements.md, research-2026-11-13.md,
+benchmarks/challenge-v1.md и progress.md. Release51/51 описан в
+release-2026-11-13.md; это development-результат, не100-task hidden score.
 
-Дедлайн13 ноября23:59 МСК. Пользователь отправил письмо с просьбой принять
-приглашение в repo. Наличие ссылки в тексте и получение оргкомитетом не проверены.
-URL нужен на openjiuwen_org@nsu.ru. promsoft=write, madrugado=none по GitHub
-после прогона. Не считать pending принятым. Утром14-го проверить #teams.
+Следующий один live-запуск на Windows в текущем repo:
+
+git fetch origin
+git switch experiment/challenge-benchmark
+py scripts/run_challenge_benchmark.py --partition calibration --format plain --budget 15000 --live
+
+Docker Desktop нужен. Image its-ia:release уже подходит: runtime fingerprint
+тот же ead9793f405a0565a7c1d01d89a4d8101c47998ba48ac752382e730beadb242e.
+Rebuild не требуется. Скрипт сначала проверит source match без API/сети.
+
+Набор100:80 решаемых/20 missing;40 решаемых семейств по2 варианта,20 missing
+сценариев. Calibration60 (48 решаемых,195 reward), confirmation40 (32,118),
+непересекающиеся семейства. First run только calibration/plain и BUDGET15000.
+Plain явно задаёт --no-json-mode к реальному /app агенту, имитируя payload,
+который он выберет на незнакомом proxy. Не имитирует сам proxy/usage/HTTP.
+Передать artifacts/challenge-*/benchmark.json. Отложенные40 пока не запускать.
+
+После отчёта выбрать один механизм, проверить SDK/юниты, затем ограниченную
+A/B пару при одинаковом бюджете. Для расписания нужен действительно тесный
+бюджет. Не менять одновременно модель/инструменты/расписание и не приписывать
+результат одному фактору. Ни одна новая runtime-гипотеза ещё не измерена.
+
+Дедлайн13 ноября23:59 МСК; сохранить72a942c, если кандидат не доказал выигрыш.
+Пользователь написал оргкомитету о pending-приглашении. Последняя проверка
+promsoft=write, madrugado=none. Доступ/получение URL письмом не считать завершёнными.
 
 ## Постановка и состояние
 
@@ -45,18 +64,9 @@ JSON auto только HTTPS api.neuraldeep.ru:443; неизвестный ад�
 Boolean override-флаги доступны; A/B оценщик явно задаёт оба режима, чтобы
 новые defaults не испортили контрольный вариант.
 
-Следующий локальный шаг после merge PR7: git fetch origin; git switch main;
-git pull --ff-only; git log -1 --oneline; git status --short. Уже собранный
-image соответствует проверенному runtime; документирование результата его
-не меняет. API и Docker build повторять не требуется без новой причины.
-
-Release-check выполнен: public8 + coding3 + свежие10,19/19 и51/51.
-Команда агента была /app/run_agent.py --tasks-dir с BUDGET env, не /repo;
-read-only root, /tmp2GB, CPU8/RAM16GB. ITS_IA_DIAGNOSTICS включал лишь лог.
-Это dev-тест с JSON/NeuralDeep, не финальный proxy или скрытые отборочные2 задачи.
-Сырые traces остаются локальными; публичная сводка в release-2026-11-13.md.
-Не повторять probe/E02/release-check автоматически. Не добавлять новые
-модели/swarm/обучение/переписывание очереди в зафиксированную версию.
+Release-check уже выполнен:19/19,51/51,3360.8 токена,24 вызова,image1.36GB.
+Повторять его до нового обоснованного кандидата не требуется. Теперь baseline
+проверяем на новом calibration60/plain. Архивные probe/E02 не повторять.
 
 ## Совместная работа
 

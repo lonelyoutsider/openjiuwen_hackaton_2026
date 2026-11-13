@@ -398,3 +398,57 @@ commit8b2577d8502e39f335cd860e383fbd7b899052f2.
   docs/release-2026-11-13.md; обновлены README/план/handoff/статус. Только документы,
   без изменений runtime/Dockerfile/lock. Проверенная версия переносится PR7 в main.
   Новая платная серия и повтор84 тестов для документирования не требуются.
+
+## 2026-11-13 — по запросу команды оптимизация продолжается; challenge-v1
+
+- Пользователь оспорил преждевременное «финальный commit» и попросил продолжить
+  исследование/оптимизацию до дедлайна.72a942c сохраняется как проверенная
+  резервная main; это не доказанный оптимум и не запрет проверять новые идеи.
+- Проведён новый целевой web-поиск и чтение первичных источников: Google
+  budget-aware-agent/Budget Tracker/BATS, budget-matched web-agent study,
+  mini-SWE-agent/Agentless, observation masking/JetBrains, TALE, HarnessFlow,
+  InfiAgent-DABench, EvalPlus, MuSiQue, SQuAD2, GAIA. Первичные abstracts
+  EcoAgent-Bench/openJiuwen найдены, прямой fulltext недоступен. Не заявляем
+  полный аудит всех работ/чужих solve rate. Прочитаны выборочные исходники
+  Budget Tracker и mini-SWE-agent. Итоги: docs/research-2026-11-13.md.
+- Аудит выявил неоткалиброванные type-cost3000/1500/1000, одинаковый call cap,
+  отсутствие remaining budget в модельном контексте, silent truncation previews,
+  отсутствие state-aware repeats. Это гипотезы, а не измеренные улучшения.
+  В release средняя стоимость LLM-решаемых: coding266.7(n7),math181.1(n2),
+  data222.0(n2),search252.7(n2). Малые группы не заменяют корректной калибровки.
+- Написан challenge-v1:100 задач,25 каждого типа,80 решаемых/20 missing-data,
+ 313 доступного reward.40 решаемых семейств по2 разных варианта плюс20
+  missing сценариев. Это60 групп, не100 независимых templates. Calibration60:
+ 48 решаемых/195 reward; confirmation40:32/118. Семейства между ними не
+  пересекаются; smoke28 входит в calibration. Новые вопросы/код/данные авторские,
+  внешние datasets/решения не скопированы; новые зависимости не добавлены.
+- Включены длинные файлы за preview/read window, multi-hop/отвлекающие документы,
+  join/dedup/CSV quoting/BOM/UTC/пропуски, заданный JSON output, неявная нехватка
+  данных, несколько coding-исходников, Unicode/generators/cycles/LRU. Expected,
+  reference_sources, private checks, family/partition не попадают в task.json.
+-20/20 reference coding-патчей проходят независимые проверки;20/20 исходных
+  mutants отвергаются, в том числе при прохождении слабых видимых тестов.
+  Числовые ответы дополнительно сверены независимыми ручными расчётами.
+  JSON checker сравнивает структуру/типы, отвергает duplicates/NaN/bool вместо числа.
+- scripts/run_challenge_benchmark.py: один запуск с заданным budget/partition/format,
+  dry-run по умолчанию. Проверяет совпадение реального image с runtime до ключа,
+  запускает /app agent, а оценщик из read-only snapshot. Plain моделирует
+  payload неизвестного proxy через --no-json-mode, не его usage/HTTP-реализацию.
+  При missing report/неизвестном usage/превышении бюджета — ошибка без retry.
+  Run/report сохраняют commit/image/fingerprint/профиль; ключа в args/report нет.
+- Python3.12.14 + закреплённый openJiuwen0.1.19:96/96 тестов PASS без пропусков.
+  Проверены partitions/семейства/детерминизм, gold/mutants, защитные границы
+  оценщика, stale image/dry-run/provenance/неполный отчёт. Это не96 Qwen-задач.
+- Бесплатный проход всех100 через настоящий SDK без LLM:exit0,0 API,
+ 0/80 решаемых (новые формулировки не покрыты узкими парсерами), все остальные
+  unsupported.20 отсутствующих answer.txt не являются20 явными правильными
+  отказами; explicit abstentions=0. Live качество challenge ещё неизвестно.
+- Runtime/Dockerfile/requirements.lock/main не меняются. Fingerprint по-прежнему
+  ead9793f405a0565a7c1d01d89a4d8101c47998ba48ac752382e730beadb242e;
+  можно использовать уже проверенный its-ia:release без rebuild.
+- Следующий только один live baseline: calibration60/plain/BUDGET15000;
+  py scripts/run_challenge_benchmark.py --partition calibration --format plain --budget 15000 --live
+  Ключ и запуск остаются на Windows. Отчёт benchmark.json; confirmation40
+  сохранить до выбора изменения. Затем отдельный механизм/A-B при том же budget,
+  расписание дополнительно при реальном дефиците, затем confirmation/regression.
+  Платные вызовы в этом исследовании ассистентом не выполнялись.
