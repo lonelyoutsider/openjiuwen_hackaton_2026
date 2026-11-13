@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from harness.execution import execute
 from harness.tasks import load_tasks
+from harness.profile import DEFAULT_MODEL, DEFAULT_CALLS, resolve_json_mode
 
 
 async def main():
@@ -15,11 +16,14 @@ async def main():
     parser.add_argument("--tasks-dir", type=Path, required=True)
     parser.add_argument("--budget", type=int, default=int(os.environ.get("BUDGET", "100000")))
     parser.add_argument("--no-llm", action="store_true")
-    parser.add_argument("--diagnostics", action="store_true", help="record bounded model actions and tool observations")
-    parser.add_argument("--max-calls-per-task", type=int, default=6)
+    parser.add_argument("--diagnostics", action="store_true", default=os.environ.get("ITS_IA_DIAGNOSTICS") == "1", help="record bounded model actions and tool observations")
+    parser.add_argument("--enable-edit", action=argparse.BooleanOptionalAction, default=True, help="exact text replacement in coding sources")
+    parser.add_argument("--recover-actions", action=argparse.BooleanOptionalAction, default=True, help="accept one complete terminal JSON action after commentary")
+    parser.add_argument("--json-mode", action=argparse.BooleanOptionalAction, default=None, help="provider JSON format; auto only for the verified NeuralDeep HTTPS endpoint")
+    parser.add_argument("--max-calls-per-task", type=int, default=DEFAULT_CALLS)
     parser.add_argument("--max-output-tokens", type=int, default=1024)
     parser.add_argument("--time-limit", type=int, default=3300)
-    parser.add_argument("--model", default=os.environ.get("LLM_MODEL", "qwen3.8-27b-noreason"))
+    parser.add_argument("--model", default=os.environ.get("LLM_MODEL", DEFAULT_MODEL))
     parser.add_argument("--engine", choices=["openjiuwen", "stdlib"], default="openjiuwen",
                         help="stdlib: parser diagnostics only, not a submission")
     args = parser.parse_args()
@@ -50,10 +54,13 @@ async def main():
     if not args.no_llm and os.environ.get("LLM_API_KEY"):
         from harness.llm import Client
         from harness.agent import Agent
-        client = Client(os.environ.get("LLM_BASE_URL", "https://api.neuraldeep.ru/v1"),
-                        os.environ["LLM_API_KEY"], args.budget, model=args.model, deadline=deadline)
+        base_url = os.environ.get("LLM_BASE_URL", "https://api.neuraldeep.ru/v1")
+        client = Client(base_url,
+                        os.environ["LLM_API_KEY"], args.budget, model=args.model, deadline=deadline,
+                        json_mode=resolve_json_mode(base_url, args.json_mode))
         agent = Agent(client, max_calls=args.max_calls_per_task,
-                      max_tokens=args.max_output_tokens, deadline=deadline, diagnostics=args.diagnostics)
+                      max_tokens=args.max_output_tokens, deadline=deadline, diagnostics=args.diagnostics,
+                      enable_edit=args.enable_edit, recover_actions=args.recover_actions)
         if args.engine == "openjiuwen":
             flow = build_workflow(agent)
         # Initial cost estimates are explicit heuristics, not trained predictions.
