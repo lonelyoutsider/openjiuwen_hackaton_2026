@@ -502,3 +502,45 @@ commit8b2577d8502e39f335cd860e383fbd7b899052f2.
   confirmation40 остаётся отложен. Сырые пользовательские отчёты не коммитятся.
 - Дополнительная бесплатная регрессия8 официальных через SDK после исправления:
  6/8,16/20,exit0,0 API — прежний результат deterministic части сохранён.
+
+## 2026-11-13 — E04:compact165/195 против130/195,SDK fix подтверждён в Docker
+
+- Источники:comparison(3).json,baseline(1).json,compact.json и терминал пользователя.
+  Source26f3d05,image sha256:3eeed1a0ced84df32d66920a484b89cdf795dc2829e1955c203f3a2146b2027d,
+  fingerprint57afd096596df211adba8f9510b3bc2f8e2320eb80c27b1b6a0699267e7a9686.
+  Calibration60/plain,по12000,6 calls/cap1024,одинаковые общие reliability fixes.
+- Baseline:24/48 правильных,130/195 reward,60 вызовов,input84137/output3278,
+ 11691.7 токена,203.974с. Compact:33/48,165/195,93 вызова,input63442/output5307,
+ 11651.2 токена,243.917с. Оба exit0,usage_complete=true,uncertain=false,
+  unattributed0. Пара completed,23342.9 учётного токена,без повторов.
+-+35 reward(+26.9%),+9 решений при почти равном расходе. Все24 baseline-успеха
+  сохранены. Все9 дополнительных задач baseline вообще не запрашивал у LLM.
+  Скорость не улучшилась:compact решил больше задач,сделал больше вызовов.
+  Это одна calibration-пара,не hidden score/статистическая гарантия.
+- По типам reward baseline→compact:coding7→34,data43→43,math39→41,search41→47.
+  Успешные coding-кандидаты обеих arms повторно проверены offline:1+6 PASS.
+  Суммы токенов/calls по задачам совпали с глобальным ledger.
+- b091 сохранил правильность6 calls,стоимость5766.4→1655.8,но лишние проверки
+  результата не исчезли. b075:5 одинаковых незакрытых JSON,затем ложный отказ;
+  b040:5 пустых content,затем неверное9 вместо8; b064 вычислил18.0,но не смог
+  зарезервировать последний answer. В compact12 решаемых вообще не запрашивались.
+  Новые механизмы для этих проблем пока не включаем перед confirmation.
+- В baseline6/60 format failures,в compact21/93;empty content6/10;все153 finish=stop.
+  Не все отличия на неизменённых inputs можно причинно приписать previews.
+  Разбор:docs/experiments/e04-context-result.md. Сырые traces не коммитятся.
+- Подтверждённый reliability fix готов к интеграции main через PR8;compact
+  пока opt-in. Обычный CLI ещё не включает выбранный compact профиль.
+  Прежняя72a942c содержит известный SDK bug и больше не рекомендуемый финал.
+- Подготовлен один run_candidate_validation.py --live:confirmation40/plain/compact
+  <=12000,затем regression21/plain/compact<=5000,независимые бюджеты этапов,
+  общий потолок17000. Тот же frozen image/source,без retries. При runtime/usage
+  error второй этап не запускается;низкий score не выдаётся за transport error.
+  Отчёты validation.json,confirmation.json,regression.json;новая серия ещё не выполнена.
+- Runtime/Dockerfile/lock не меняются,существующий context-experiment image
+  подходит без rebuild. Изменены только tools проверки/документы.112/112 тестов
+  PASS без пропусков с Python3.12.14/openJiuwen0.1.19;новые проверки:dry-run,
+  stale image до ключа,правильные suites/partitions/бюджеты,протокол2 этапов,
+  остановка по unknown usage,нет ключа в reports/args. Это не112 Qwen-задач.
+- После confirmation:выбор defaults,проверка стандартного запуска без feature
+  flag,проверенный checkpoint main до23:59 МСК. Дальнейшие format-reset/feedback/
+  scheduling требуют отдельной оценки. Доступ madrugado проверен снова:none.

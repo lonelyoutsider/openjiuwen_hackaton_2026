@@ -18,7 +18,8 @@ from scripts.challenge_set import build_challenge_set, PARTITIONS, VERSION
 from scripts.run_edit_experiment import snapshot_checkout
 
 
-def docker_command(image, snapshot, reports, partition, budget, response_format, *, compact_data_context=False):
+def docker_command(image, snapshot, reports, partition, budget, response_format, *, compact_data_context=False, suite='challenge'):
+    if suite not in ('challenge','release'):raise ValueError('unsupported validation suite')
     command=['docker','run','--rm','--read-only','--tmpfs','/tmp:rw,size=2g',
         '--cpus','8','--memory','16g','--pids-limit','512','--cap-drop','ALL',
         '--security-opt','no-new-privileges','--workdir','/app','-e','HOME=/tmp',
@@ -26,7 +27,7 @@ def docker_command(image, snapshot, reports, partition, budget, response_format,
         '--mount',f'type=bind,source={snapshot},target=/repo,readonly',
         '--mount',f'type=bind,source={reports},target=/results',
         '--entrypoint','python',image,'/repo/scripts/evaluate_examples.py',
-        '--suite','challenge','--partition',partition,'--format',response_format,
+        '--suite',suite,'--partition',partition,'--format',response_format,
         '--release-defaults','--llm','--budget',str(budget),'--diagnostics','--quiet',
         '--report','/results/benchmark.json']
     if compact_data_context:command.append('--compact-data-context')

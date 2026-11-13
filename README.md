@@ -28,31 +28,31 @@
 Перед запуском оценщик удаляет expected из копии task.json. Решатель получает
 только разрешённые поля. expected читает исключительно локальный оценщик.
 
-## Продолжение оптимизации13 ноября
+## Текущий кандидат13 ноября
 
-Main72a942c остаётся резервной версией, но расширенный baseline выявил
-критический SDK timeout60с, обрывающий всю очередь. E03 завершился аварийно:
-19 начатых выполнимых решены верно,29 не запускались;109/195 reward,
-10587.8 токена. Это не завершённая оценка качества. Подробности:
-[результат и новый протокол](docs/experiments/e03-partial-result.md).
+E04 calibration60/plain:baseline130/195 и24/48 правильных,
+compact165/195 и33/48 при11691.7/11651.2 учётного токена. Оба exit0,
+usage complete,ошибка SDK timeout не повторилась. Это одна development-пара.
+[Разбор](docs/experiments/e04-context-result.md).
 
-В experiment/challenge-benchmark подготовлены исправление timeout через
-явную SDK-сессию, надёжный общий usage при ошибках и обработка ошибочного
-Python write. Оптимизация compact-data-context выключена по умолчанию.
-Следующий шаг — одна пара baseline/compact с этими общими исправлениями,
-calibration60/plain, по12000 учётных токенов, максимум24000 суммарно.
-Нужен новый image: старый its-ia:release содержит timeout bug.
+Общие исправления SDK/учёта/write интегрируются в main через PR8.
+Compact пока opt-in. Следующий этап — confirmation40 и regression21 без
+нового изменения runtime. Уже собранный its-ia:context-experiment подходит:
+fingerprint57afd096596df211adba8f9510b3bc2f8e2320eb80c27b1b6a0699267e7a9686.
 
 ```powershell
 git pull --ff-only
-docker build --progress=plain -t its-ia:context-experiment .
-py scripts/run_context_experiment.py --live
+py scripts/run_candidate_validation.py --live
 ```
 
-[Исследование и аудит](docs/research-2026-11-13.md),
-[бенчмарк100 задач](benchmarks/challenge-v1.md). Confirmation40 пока не запускать.
-Новый live-выигрыш ещё не измерен. SDK fix необходим независимо от выбора preview,
-но в main переносим после проверки candidate image.
+Одна серия:confirmation<=12000,regression<=5000,общий потолок17000;
+plain/compact,6 calls/cap1024,без retries. Ключ скрыт. Передать validation.json,
+confirmation.json,regression.json из artifacts/candidate-*.
+Default compact ещё не включён; после проверки потребуется выбранный профиль
+в обычном CLI. Main72a942c — историческая версия с выявленным timeout defect,
+а не рекомендуемый финальный checkpoint. Новые live-результаты пока неизвестны.
+
+[Исследование](docs/research-2026-11-13.md),[бенчмарк](benchmarks/challenge-v1.md).
 
 ## Проверенный релиз13 ноября
 

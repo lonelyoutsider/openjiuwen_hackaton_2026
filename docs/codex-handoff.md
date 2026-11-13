@@ -1,45 +1,44 @@
 # Контекст для VS Code / Codex,13 ноября2026
 
-Repo lonelyoutsider/openjiuwen_hackaton_2026. Main72a942c сохраняется как
-проверенная резервная версия. Пользователь попросил продолжить оптимизацию;
-прежнее «финальная/freeze» не означает остановку исследования. Новая ветка
-experiment/challenge-benchmark, без изменений runtime/Dockerfile/lock.
+Repo lonelyoutsider/openjiuwen_hackaton_2026,experiment/challenge-benchmark.
+E04 на26f3d05 завершён:baseline130/195,24/48,11691.7 токена;compact165/195,
+33/48,11651.2. Оба exit0/usage complete/unattributed0. Все24 baseline-успеха
+сохранены,+9 новых. Это одна calibration-пара, не hidden score.
+Разбор:experiments/e04-context-result.md. Основные docs:AGENTS.md,
+requirements.md,plan.md,progress.md,research-2026-11-13.md.
 
-Прочитать AGENTS.md, requirements.md, research-2026-11-13.md,
-benchmarks/challenge-v1.md и progress.md. Release51/51 описан в
-release-2026-11-13.md; это development-результат, не100-task hidden score.
+SDK60s timeout исправлен через явную Session,finally ledger и SyntaxError
+feedback проверены SDK и реальным Docker-прогоном. Эти общие исправления
+интегрируются main через PR8.72a942c — исторический резерв с известным багом.
+Compact остаётся opt-in до выбора обычных defaults; не выдавать победу opt-in
+за включение его в запуск жюри.
 
-E03 на7b6bfd9 завершился аварийно:SDK workflow timeout60с после b091,
-109/195 reward,19/48 решаемых. Все19 фактически начатых выполнимых правильны;
-29 не исследованы, все12 coding не запускались. Расход по records10587.8,
-49 вызовов,5 явных правильных отказов; не объявлять12 пропусков верными отказами.
-Разбор: docs/experiments/e03-partial-result.md.
-
-SDK0.1.19 проверен по installed source: Runner envs игнорируется, нужна явная
-create_workflow_session с WORKFLOW_EXECUTE_TIMEOUT. Исправление использует
-остаток глобального deadline+30с cleanup. Сам deadline/HTTP/tools/BUDGET сохранены.
-run_usage печатается в finally; evaluator читает общий ledger даже после crash.
-SyntaxError от write теперь tool feedback, не crash (найдено аудитом, не в E03).
-
-Следующий один запуск в ветке experiment/challenge-benchmark:
+Следующий один запуск (runtime не меняется,image уже есть):
 
 git pull --ff-only
-docker build --progress=plain -t its-ia:context-experiment .
-py scripts/run_context_experiment.py --live
+py scripts/run_candidate_validation.py --live
 
-Одна пара baseline/compact, calibration60/plain, по12000/максимум24000.
-Обе arms используют общие reliability fixes; отличаются только превью данных:
-8000 прежнее против1024+явный marker. Маленькие файлы и .py не меняются.
-Compact opt-in, --compact-data-context; не включать default до результата.
-При неизвестном usage/ошибке control treatment не запускается; нет retries.
-Нужен именно rebuild нового tag: старый release image содержит timeout bug.
-Передать artifacts/context-*/comparison.json,baseline.json,compact.json.
+Одна серия:confirmation40/plain/compact BUDGET12000,затем regression21 BUDGET5000,
+независимые бюджеты этапов,максимум17000 суммарно.6 calls/cap1024,Qwen3.8-noreason,
+без retries. При error/unknown usage второй этап не запускается. Источник и
+image заморожены,ключ только в env. Fingerprint прежний
+57afd096596df211adba8f9510b3bc2f8e2320eb80c27b1b6a0699267e7a9686.
+Передать artifacts/candidate-*/validation.json,confirmation.json,regression.json.
 
-Confirmation40 отложен. Не менять одновременно очередь/модель/лимиты вызовов.
-Выбранный вариант далее проверить на confirmation/старых регрессиях и внедрить
-до13 ноября23:59 МСК. Даже если compact проиграет, SDK fix надо включить в сдачу
-после Docker-проверки.72a942c — резерв с известным60s дефектом, не финальный оптимум.
-Доступ жюри остаётся отдельным организационным вопросом, pending не равен доступу.
+После отчёта:отдельно оценить32 отложенных решаемых и19 старых регрессий.
+При принятии включить compact в стандартный CLI,сохранить явное отключение
+для контрольных запусков и перепроверить путь без feature flag. Не менять
+сейчас очередь/модель/форматные циклы до confirmation. Не требуется rebuild
+для нового runner:ни один файл runtime/Dockerfile/lock после26f3d05 не меняется.
+
+Нерешённые calibration:b075 ложный отказ после5 одинаковых malformed JSON,
+b040 неверный ответ после5 пустых content,b064 вычислен18.0,но финальный
+answer не помещается в резерв. Прочие12 решаемых compact вообще не запускал.
+Эти факты — кандидаты следующего исследования,не новые исправления.
+
+Дедлайн13 ноября23:59 МСК. Доступ madrugado по последней проверке всё ещё none;
+pending не равен доступу. Отправленное пользователем письмо зафиксировано,
+получение URL оргкомитетом независимо не подтверждено.
 
 ## Постановка и состояние
 

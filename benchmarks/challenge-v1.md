@@ -67,17 +67,24 @@ NaN, лишние ключи. Не используется LLM judge с доп�
 14. Совпадает ли source fingerprint реального image с выбранным runtime?
 15. Работает ли plain payload, который выберется для неизвестного proxy?
 
-## Текущее продолжение после первого запуска
+## Текущее продолжение
 
-Первый calibration60/plain/BUDGET15000 выполнен:SDK timeout60с,exit1,
-19/48 решаемых,109/195 reward,10587.8 токена.19 начатых решены верно,
-29 ещё не запускались. Это аварийная частичная оценка. Подробности и новые
-команды: docs/experiments/e03-partial-result.md.
+E03 был аварийным;после SDK fix E04 завершился:baseline130/195,compact165/195
+при BUDGET12000 у обоих. Compact выбран предварительно. Анализ:
+docs/experiments/e04-context-result.md.
 
-Следующий шаг — одна baseline/compact пара, оба с исправленным SDK timeout,
-по12000 токенов на вариант. Требуется rebuild its-ia:context-experiment.
-Предыдущая рекомендация переиспользовать старый release image больше не подходит.
-Confirmation40 пока не запускать. Сырые отчёты остаются в ignored artifacts.
+Следующий один запуск:
+
+```powershell
+git pull --ff-only
+py scripts/run_candidate_validation.py --live
+```
+
+Сначала confirmation40/plain/compact с BUDGET12000,затем regression21 с5000.
+Потолок серии17000,бюджеты этапов независимы. Runtime/image прежние26f3d05,
+its-ia:context-experiment,не нужен rebuild. Отчёты validation.json,
+confirmation.json,regression.json. Пока не менять поведение по результатам
+calibration:сохраняем confirmation для проверки выбранного профиля.
 
 ## Порядок улучшений
 
