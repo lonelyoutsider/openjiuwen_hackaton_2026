@@ -14,6 +14,7 @@ import time
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 from harness.tools import run_python
+from harness.profile import DEFAULT_MODEL, DEFAULT_CALLS, resolve_json_mode
 
 
 def check_answer(folder, label):
@@ -50,7 +51,8 @@ def main():
     parser.add_argument('--engine', choices=['openjiuwen', 'stdlib'], default='openjiuwen')
     parser.add_argument('--llm', action='store_true')
     parser.add_argument('--budget', type=int, default=3000)
-    parser.add_argument('--suite', choices=['public', 'validation', 'coding-edit'], default='public')
+    parser.add_argument('--suite', choices=['public', 'validation', 'coding-edit', 'release'], default='public')
+    parser.add_argument('--release-defaults', action='store_true', help='invoke the image /app/run_agent.py with only tasks-dir and BUDGET env')
     parser.add_argument('--enable-edit', action='store_true')
     parser.add_argument('--recover-actions', action='store_true')
     parser.add_argument('--json-mode', action='store_true')
@@ -61,6 +63,8 @@ def main():
     args = parser.parse_args()
     if args.budget <= 0:
         parser.error('budget must be positive')
+    if args.release_defaults and (not args.llm or args.engine != 'openjiuwen'):
+        parser.error('release-defaults requires explicit --llm and openjiuwen')
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary) / 'tasks'
         if args.suite == 'public':
@@ -70,9 +74,12 @@ def main():
         elif args.suite == 'validation':
             from scripts.validation_set import build_validation_set
             labels = build_validation_set(root)
-        else:
+        elif args.suite == 'coding-edit':
             from scripts.coding_edit_set import build_coding_edit_set
             labels = build_coding_edit_set(root)
+        else:
+            from scripts.release_set import build_release_set
+            labels = build_release_set(root)
         if args.only:
             selected = set(args.only.split(','))
             unknown = selected - set(labels)
@@ -89,15 +96,27 @@ def main():
                    '--max-output-tokens', '1024'] if args.llm else ['--no-llm']
         if args.diagnostics:
             options += ['--diagnostics']
-        if args.enable_edit:
-            options += ['--enable-edit']
-        if args.recover_actions:
-            options += ['--recover-actions']
-        if args.json_mode:
-            options += ['--json-mode']
+        options += ['--enable-edit' if args.enable_edit else '--no-enable-edit']
+        options += ['--recover-actions' if args.recover_actions else '--no-recover-actions']
+        options += ['--json-mode' if args.json_mode else '--no-json-mode']
+        entrypoint = REPO / 'run_agent.py'
+        child_env = os.environ.copy()
+        if args.release_defaults:
+            entrypoint = Path('/app/run_agent.py')
+            if not entrypoint.is_file():
+                parser.error('release-defaults must run inside the built Docker image')
+            options = []
+            child_env['BUDGET'] = str(args.budget)
+            if args.diagnostics:
+                child_env['ITS_IA_DIAGNOSTICS'] = '1'
+            else:
+                child_env.pop('ITS_IA_DIAGNOSTICS', None)
         started = time.monotonic()
-        run = subprocess.run([sys.executable, str(REPO / 'run_agent.py'), '--tasks-dir', str(root),
-                              '--engine', args.engine, *options], cwd=REPO, timeout=360,
+        command = [sys.executable, str(entrypoint), '--tasks-dir', str(root)]
+        if not args.release_defaults:
+            command += ['--engine', args.engine]
+        run = subprocess.run([*command, *options], cwd='/app' if args.release_defaults else REPO,
+                             env=child_env, timeout=900 if args.release_defaults else 360,
                              capture_output=args.quiet, text=True)
         elapsed = time.monotonic() - started
         if args.quiet and run.returncode:
@@ -129,10 +148,13 @@ def main():
             rows.append(row)
             print(f"{name}: {outcome}; calls={row['llm_calls']}; tokens={row['weighted_tokens']:.1f}; status={row['status']}", flush=True)
         summary = {'dataset': args.suite + '; not hidden score', 'engine': args.engine,
-                   'enable_edit': args.enable_edit, 'recover_actions': args.recover_actions,
-                   'json_mode': args.json_mode,
+                   'enable_edit': True if args.release_defaults else args.enable_edit,
+                   'recover_actions': True if args.release_defaults else args.recover_actions,
+                   'json_mode': resolve_json_mode(os.environ.get('LLM_BASE_URL', 'https://api.neuraldeep.ru/v1')) if args.release_defaults else args.json_mode,
+                   'release_defaults': args.release_defaults,
+                   'max_calls_per_task': DEFAULT_CALLS if args.release_defaults else 4,
                    'elapsed_seconds': round(elapsed, 3),
-                   'model': os.environ.get('LLM_MODEL', 'qwen3.8-27b-noreason') if args.llm else None,
+                   'model': os.environ.get('LLM_MODEL', DEFAULT_MODEL) if args.llm else None,
                    'budget': args.budget if args.llm else 0,
                    'correct': sum(r['correct'] for r in rows), 'tasks': len(rows),
                    'solvable_tasks': sum(r['known_solvable'] for r in rows),

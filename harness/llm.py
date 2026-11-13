@@ -40,11 +40,29 @@ class Client:
                 "temperature": 0, "stream": False}
         if self.json_mode:
             body["response_format"] = {"type": "json_object"}
+        requested_output = max_tokens
+        minimum_output = min(64, max_tokens)
         payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        # Fit the output allowance to the actual remaining BUDGET. Input
+        # estimation remains conservative; never spend an unreserved request.
+        while True:
+            available_output = (self.limit - self.spent - len(payload) - 1024) // 10
+            if max_tokens <= available_output:
+                break
+            if available_output < minimum_output:
+                self.last_request_metadata = {"request_sent": False, "max_output_tokens": max_tokens,
+                    "requested_output_tokens": requested_output,
+                    "reservation_weighted_tokens": (len(payload) + 1024 + minimum_output * 10) / 10,
+                    "remaining_weighted_tokens": (self.limit - self.spent) / 10}
+                raise LLMStopped("not enough budget for a conservative request reservation")
+            max_tokens = min(max_tokens, available_output)
+            body["max_tokens"] = max_tokens
+            payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
         # UTF-8 bytes + generous chat framing allowance is a conservative input
         # estimate, not an exact Qwen tokenizer. Unused reservation is released.
         reserve = len(payload) + 1024 + max_tokens * 10
         self.last_request_metadata = {"request_sent": False, "max_output_tokens": max_tokens,
+            "requested_output_tokens": requested_output,
             "reservation_weighted_tokens": reserve / 10,
             "remaining_weighted_tokens": (self.limit - self.spent) / 10}
         if self.spent + reserve > self.limit:
@@ -88,6 +106,7 @@ class Client:
                 reasoning = None
             self.last_response_metadata = {"finish_reason": finish, "reasoning_tokens": reasoning,
                 "json_mode": self.json_mode,
+                "requested_output_tokens": requested_output,
                 "input_tokens": prompt, "output_tokens": completion, "max_output_tokens": max_tokens,
                 "content_chars": len(content) if isinstance(content, str) else None}
             return content
