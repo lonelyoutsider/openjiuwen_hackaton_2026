@@ -34,7 +34,10 @@ class WorkflowIntegrationTests(unittest.TestCase):
     def test_judge_style_command_overrides_short_sdk_default(self):
         self._run_workflow(enable_edit=True,recover_actions=True,judge_style=True,sdk_timeout='0.001')
 
-    def _run_workflow(self, enable_edit, recover_actions=False, json_mode=False, judge_style=False, budget=5000, sdk_timeout=None):
+    def test_judge_style_default_compacts_large_data_before_provider(self):
+        self._run_workflow(enable_edit=True, recover_actions=True, judge_style=True, large_data=True)
+
+    def _run_workflow(self, enable_edit, recover_actions=False, json_mode=False, judge_style=False, budget=5000, sdk_timeout=None, large_data=False):
         output_caps = []
         class Provider(http.server.BaseHTTPRequestHandler):
             def do_POST(self):
@@ -43,6 +46,9 @@ class WorkflowIntegrationTests(unittest.TestCase):
                 if request.get('response_format') != ({'type': 'json_object'} if json_mode else None):
                     raise AssertionError('JSON mode did not reach the provider as configured')
                 messages = request["messages"]
+                if large_data and "Task type: math" in messages[1]["content"]:
+                    if 'PREVIEW TRUNCATED' not in messages[1]['content']:
+                        raise AssertionError('judge-style CLI did not enable compact data previews')
                 if "Task type: coding" in messages[1]["content"]:
                     if enable_edit:
                         if "Additional coding action:" not in messages[0]["content"]:
@@ -69,6 +75,9 @@ class WorkflowIntegrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             math = root / "math"; math.mkdir()
+            if large_data:
+                math_work = math / 'workspace'; math_work.mkdir()
+                (math_work / 'large.txt').write_text('x' * 6000)
             (math / "task.json").write_text(json.dumps({"task_id": "math", "task_type": "math",
                 "instruction": "Three crates contain 17 apples each. How many apples altogether?", "reward": 1}))
             coding = root / "coding"; coding.mkdir()

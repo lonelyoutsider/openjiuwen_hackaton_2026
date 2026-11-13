@@ -28,39 +28,46 @@
 Перед запуском оценщик удаляет expected из копии task.json. Решатель получает
 только разрешённые поля. expected читает исключительно локальный оценщик.
 
-## Текущий кандидат13 ноября
+## Финальная конфигурация13 ноября
 
-E04 calibration60/plain:baseline130/195 и24/48 правильных,
-compact165/195 и33/48 при11691.7/11651.2 учётного токена. Оба exit0,
-usage complete,ошибка SDK timeout не повторилась. Это одна development-пара.
-[Разбор](docs/experiments/e04-context-result.md).
+Сдаваемая ветка — **main**. Выбран измеренный E04 compact: **165/195 reward,
+33/48 решаемых** против130/195 и24/48 при BUDGET12000. Расход11651.2 против
+11691.7. Все24 контрольных успеха сохранены. Это development calibration,
+не скрытый score и не гарантия победы. [Разбор](docs/experiments/e04-context-result.md).
 
-Общие исправления SDK/учёта/write интегрируются в main через PR8.
-Compact пока opt-in. Следующий этап — confirmation40 и regression21 без
-нового изменения runtime. Уже собранный its-ia:context-experiment подходит:
-fingerprint57afd096596df211adba8f9510b3bc2f8e2320eb80c27b1b6a0699267e7a9686.
+**Компактные маркированные превью включены по умолчанию** вместе с edit/recovery.
+Полные файлы остаются доступны инструментам. Из E04 также включены исправления
+SDK timeout, итогового учёта и feedback при ошибке Python. Неизвестный прокси
+получает plain chat; JSON auto только для проверенного NeuralDeep HTTPS.
+Новые алгоритмы перед закрытием не добавляются, платные прогоны остановлены.
+Финальная offline-проверка:113/113 PASS с настоящим SDK0.1.19,без skipped;
+в том числе обычный CLI без feature flags и малый BUDGET,с fake HTTP provider.
 
-```powershell
-git pull --ff-only
-py scripts/run_candidate_validation.py --live
+Финальный контракт, границы проверки и административный чеклист:
+[docs/submission-2026-11-13.md](docs/submission-2026-11-13.md).
+Отложенная confirmation40 и новая regression21 **не выполнены**: пользователь
+вдали от ноутбука. Финальное изменение выбирает уже измеренный режим через
+обычный CLI; новый Docker-образ и live API после смены default не проверены.
+Старые образы имеют прежний fingerprint; для воспроизведения требуется rebuild.
+
+```bash
+docker build -t its-ia:final .
+# Проверяющие передают LLM_BASE_URL, LLM_API_KEY и BUDGET через env:
+python /app/run_agent.py --tasks-dir /data/tasks
 ```
 
-Одна серия:confirmation<=12000,regression<=5000,общий потолок17000;
-plain/compact,6 calls/cap1024,без retries. Ключ скрыт. Передать validation.json,
-confirmation.json,regression.json из artifacts/candidate-*.
-Default compact ещё не включён; после проверки потребуется выбранный профиль
-в обычном CLI. Main72a942c — историческая версия с выявленным timeout defect,
-а не рекомендуемый финальный checkpoint. Новые live-результаты пока неизвестны.
+Модель qwen3.8-27b-noreason,6 вызовов на задачу, output cap1024 с адаптацией
+к остатку общего BUDGET. Явный --no-compact-data-context возвращает контрольный
+режим; оценщики задают контроль явно и не подменяют его новым default.
 
-[Исследование](docs/research-2026-11-13.md),[бенчмарк](benchmarks/challenge-v1.md).
-
-## Проверенный релиз13 ноября
+## Исторический release-check13 ноября
 
 **19/19 выполнимых задач,51/51 reward,2/2 корректных отказа,24 вызова,
 3360.8 учётного токена при BUDGET10000,90.558с.** Образ1.36GB.
 Это один development-прогон21 случая (официальные8, coding-регрессии3,
-свежие10), не hidden score. Сдаваемая ветка — main, история интеграции PR7.
-Проверенный runtime изc55c490; после его тестирования меняются только документы.
+свежие10), не hidden score. Исторический runtime c55c490 интегрирован PR7.
+Позднее runtime исправлен и дополнен E04; не приписывать этот результат
+новому финальному дереву или считать его новым regression-прогоном.
 Полная фиксация: [docs/release-2026-11-13.md](docs/release-2026-11-13.md).
 
 Агент из /app/run_agent.py проверен с --tasks-dir и BUDGET env, без feature flags,
